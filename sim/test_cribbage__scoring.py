@@ -107,3 +107,26 @@ def test_score_hand():
     # A 2 10 Q K ==> 0
     assert score_hand([0, 5, 36, 47, 49]) == 0
 
+def test_score_peg():
+    # 15
+    #                 10, 5
+    assert score_peg([40, 16]) == 2
+
+    # 31
+    #                 10, 5, 10, 5, A
+    assert score_peg([40, 16, 41, 17, 0]) == 2
+
+    # pairs
+    #                A, A
+    assert score_peg([0, 1]) == 2
+    assert score_peg([0, 1, 2]) == 6
+    assert score_peg([0, 1, 2, 3]) == 12
+    assert score_peg([0, 1, 2, 4, 3]) == 0
+    # 
+
+    # runs
+
+    # run and 15
+
+    # run and 31
+    assert False

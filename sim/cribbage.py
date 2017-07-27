@@ -3,6 +3,7 @@
 from random import randint, sample
 
 def _list_comp(arr, func):
+    ''' apply a function across a set of items '''
     return [func(x) for x in arr]
 
 # scoring methods
@@ -39,6 +40,7 @@ def score_hand(hand, **kwargs):
             score_flush(hand, **kwargs)
 
 def score_pairs(hand, **kwargs):
+    ''' each unique pair of cards are awarded 2 points '''
     t_hand = hand_classes(hand)
     buckets = [0] * NUMBER_CLASSES
     total_pts = 0
@@ -51,10 +53,15 @@ def score_pairs(hand, **kwargs):
         # 3 of a kind --> 6 pts  = 3*2
         # 4 of a kind --> 12 pts = 4*3
         # 5 of a kind --> impossible, you cheater
-        total_pts += max(0, b-1) * b
+        #total_pts += max(0, b-1) * b
+        total_pts += (b-1) * b
     return total_pts
 
 def score_runs(hand, **kwargs):
+    '''
+    each card in a run of 3 or more consecutive cards is awarded 1 point
+    each
+    '''
     t_hand = hand_classes(hand)
     buckets = [0] * NUMBER_CLASSES
     for t in t_hand:
@@ -118,6 +125,11 @@ def _add_shift(arr, shift):
     return arr
 
 def score_nobs(hand, **kwargs):
+    '''
+    Otherwise known as the right jack:
+    determine if there is a jack in the player's hand that is the same suit
+    as the cut card.
+    '''
     typs = hand_classes(hand)
     i = 0
     ret = 0
@@ -126,16 +138,18 @@ def score_nobs(hand, **kwargs):
                     and typs[i] == JACK\
                 else 0
         i += 1
-#    try:
-#        while i < 4 and ret == 0:
-#            indx = i + typs[i:4].index(JACK)
-#            ret = 1 if suit(hand[indx]) == suit(hand[4]) else 0
-#            i = indx + 1
-#    except Exception as e:
-#        pass
     return ret
 
 def score_flush(hand, is_crib=False, **kwargs):
+    '''
+    A rule I didn't know until last semester.
+    Like in poker, a flush is when all cards share the same suit.
+    However, this needs not include the cut card, except when counting the
+    crib.
+    If all 4 cards of the hand are the same, 4 points are earned.
+    If the cut card is additionally of the same suit, 5 points are earned.
+    The only possible flush in the crib is the 5-card flush.
+    '''
     suits = hand_suits(hand)
     A = [0] * len(suits)
     last_suit = suits[0]
@@ -146,10 +160,62 @@ def score_flush(hand, is_crib=False, **kwargs):
     else:
         return 1 + max(A[3],A[4]) if A[3] == 3 else 0
 
+def score_peg(cards_played):
+    score = 0
+    summa = sum(hand_values(cards_played))
+    if summa == 15 or summa == 31:
+        score += 2
+
+    # pairs
+    num_each_card = [0] * NUMBER_CLASSES
+    classes = hand_classes(reversed(cards_played))
+    num_each_card[classes[0]] = 1
+    for card in num_each_card[1:]:
+        if num_each_card[card] > 0:
+            # we have the same card as last played
+            num_each_card[card] += 1
+        else:
+            # new card
+            lscore = sum(num_each_card)
+            if lscore >= 2:
+                # add last number of pairs
+                score += lscore * (lscore-1)
+            break
+            # no reset, we're done (don't care about previous pairs
+            ## reset because we don't have the same card as before
+            #num_each_card = [0] * NUMBER_CLASSES
+            #num_each_card[card] = 1
+
+    # runs
+    # find longest sequence of run in the last cards played,
+    # without repeating cards
+    if len(cards_played) >= 3:
+        num_each_card = [0] * NUMBER_CLASSES 
+        rev = reversed(cards_played) # operate only on last cards played
+        classes = hand_classes(rev)
+        lscore = 0
+        for i in range(0, len(classes)):
+            num_each_card[classes[i]] += 1
+            if 2 in num_each_card:
+                # indicates a possible double run, and those don't count
+                break
+            # let score_runs do the hard work (avoid copying code)
+            #lscore_w = score_runs(rev[:i+1])
+            #lscore_wo = score_runs(rev[1:i+1])
+            lscore_w = score_runs(classes[-(i+1):])
+            lscore_wo = score_runs(classes[-(i+1):-1])
+            # ensure that the first card (i.e. what was played) is included
+            # in the score
+            lscore = lscore_w if lscore_wo < lscore_w else 0
+        score += lscore
+    return score
+
+def random_card():
+    return randint(0, 51)
 
 class CribbageGame(object):
 
-    def __init__(agent1, agent2=None):
+    def __init__(self, agent1, agent2=None):
         self.player1 = agent1
         if agent2:
             self.player2 = agent2
@@ -166,8 +232,12 @@ class CribbageGame(object):
             self.deal_cards()
 
             # choose cards
-            self.dealer.choose_cards()
-            self.pone.choose_cards()
+            _,crib1 = self.dealer.choose_cards()
+            _,crib2 = self.pone.choose_cards()
+            crib = []
+            crib.append(crib1)
+            crib.append(crib2)
+            self.dealer.crib = crib
 
             if card_class(self.cut_card) == JACK:
                 self.dealer.score += 2
@@ -200,34 +270,37 @@ class CribbageGame(object):
         cards_played_this_round = []
 
         starter, follower = self.pone, self.hand
+        go = False
+        player_with_go = None
+
         # TODO: rule?: do you /have/ to go until 31 if given a go
         #   doesn't seem to be the case, it may be beneficial to keep
         pass
 
     def count_points(self):
-        self.pone.count_points()
+        self.pone.count_points(self.cut_card)
         if self.game_finished:
 #            self.pone.is_winner = True
 #            self.dealer.is_winner = False
             self._assign_winner()
             return
-        self.dealer.count_points()
-        if self.game_finished():
+        self.dealer.count_points(self.cut_card)
+        if self.game_finished:
             self._assign_winner()
-        #if self.dealer.score >= 121:
-            #self.dealer.is_winner = True
-            #self.pone.is_winner = False
 
-    def _assign_winner():
+    def _assign_winner(self):
+        '''determine who is the winner of the game when it has finished'''
         if self.pone.score >= 121:
             self.pone.is_winner = True
             self.dealer.is_winner = False
+        elif self.dealer.score >= 121:
+            self.pone.is_winner =False
+            self.dealer.is_winner = True
         else:
-            self.pone.is_winner = True
-            self.dealer.is_winner = False
+            pass
 
     def deal_cards(self):
-        all_cards = sample(xrange(0,51), 13)
+        all_cards = sample(range(0,51), 13)
         self.dealer.hand = all_cards[0:6]
         self.pone.hand = all_cards[6:-1]
         self.cut_card = all_cards[-1]
