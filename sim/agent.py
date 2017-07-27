@@ -19,10 +19,12 @@ class CribbageAgent(object):
     '''
 
     def __init__(self):
+        # tested
         self.score = 0
         self.crib = None
 
     def choose_cards(self):
+        # tested
         keep, toss = self._choose_cards()
         self.hand = keep
         #self.game.add_to_crib(toss)
@@ -34,6 +36,7 @@ class CribbageAgent(object):
         return deepcopy(self.cards[:4]), deepcopy(self.cards[-2:])
 
     def next_peg_card(self, cards_played):
+        # tested
         if self.can_peg_more(cards_played):
             to_play = self._select_next_peg_card(cards_played)
             self._peg_cards_left.remove(to_play)
@@ -43,10 +46,12 @@ class CribbageAgent(object):
             raise GoException
 
     def has_peg_cards_left(self):
+        # tested
         return self._peg_cards_left is not None and \
                 len(self._peg_cards_left) > 0
 
     def can_peg_more(self, cards_played):
+        # tested
         return self.has_peg_cards_left() and \
                 (min(hand_values(self._peg_cards_left)) <=
                  31 - sum([card_value(card) for card in cards_played]))
@@ -56,6 +61,7 @@ class CribbageAgent(object):
         return self._peg_cards_left[0]
 
     def count_points(self, cut_card):
+        # tested
         # Find old "streamlined" code and reference it here
         hand = deepcopy(self.hand)
         hand.append(cut_card)
