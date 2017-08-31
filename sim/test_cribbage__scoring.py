@@ -1,12 +1,5 @@
-#import unittest
-#class CribbageScorerTest(TestCase):
-#
-#    def test_card_class(self):
-#        self.assertEqual(
-#
-#    pass
-
 from cribbage import *
+from cribbage import _trim_zeros
 #import cribbage
 
 def test_card_suit():
@@ -107,6 +100,11 @@ def test_score_hand():
     # A 2 10 Q K ==> 0
     assert score_hand([0, 5, 36, 47, 49]) == 0
 
+def test__trim_zeros():
+    assert _trim_zeros([0, 1, 2, 3, 0]) == [1, 2, 3]
+    assert _trim_zeros([1, 2, 3, 0]) == [1, 2, 3]
+    assert _trim_zeros([0, 1, 0, 1, 0]) == [1, 0, 1]
+
 def test_score_peg():
     # 15
     #                 10, 5
@@ -114,19 +112,37 @@ def test_score_peg():
 
     # 31
     #                 10, 5, 10, 5, A
-    assert score_peg([40, 16, 41, 17, 0]) == 2
+    assert score_peg([40, 16, 41, 17, 0]) == 2 #(2, 2, 0, 0)
 
     # pairs
     #                A, A
-    assert score_peg([0, 1]) == 2
+    #assert score_peg([0, 1]) == 2
     assert score_peg([0, 1, 2]) == 6
     assert score_peg([0, 1, 2, 3]) == 12
     assert score_peg([0, 1, 2, 4, 3]) == 0
     # 
 
+    # pair and 15
+    #                 10, 3, A, A
+    assert score_peg([40, 10, 0, 1]) == 4
+    # pair and 31
+    #                 10, 10, 7, 2, 2
+    assert score_peg([40, 41, 24, 4, 5]) == 4
+
     # runs
+    #                A, 2, 3
+    assert score_peg([0, 4, 8]) == 3
+    #                A, 2, 3, 4
+    assert score_peg([0, 4, 8, 12]) == 4
+    #                A, 2, 4, 3 (out of order, still should count)
+    assert score_peg([0, 4, 12, 8]) == 4
+    #                A, 2, 4 
+    assert score_peg([0, 4,12]) == 0
 
     # run and 15
+    #               9, 2, 3, A
+    assert score_peg([32, 4, 8, 0]) == (3+2)
 
     # run and 31
-    assert False
+    #               10, 5, 10, 3, 2, 1
+    assert score_peg([40, 16, 41, 8, 4, 0]) == (3+2)

@@ -2,6 +2,8 @@
 
 from random import randint, sample
 
+from copy import deepcopy
+
 def _list_comp(arr, func):
     ''' apply a function across a set of items '''
     return [func(x) for x in arr]
@@ -163,53 +165,64 @@ def score_flush(hand, is_crib=False, **kwargs):
 def score_peg(cards_played):
     score = 0
     summa = sum(hand_values(cards_played))
-    if summa == 15 or summa == 31:
-        score += 2
+    sscore = 2 if summa == 15 or summa == 31 else 0
+    score += sscore
+
 
     # pairs
-    num_each_card = [0] * NUMBER_CLASSES
     classes = hand_classes(reversed(cards_played))
-    num_each_card[classes[0]] = 1
-    for card in num_each_card[1:]:
-        if num_each_card[card] > 0:
-            # we have the same card as last played
-            num_each_card[card] += 1
+    first_class = classes[0]
+    pscore = 1
+    for card in classes[1:]:
+        if card == first_class:
+            pscore += 1
         else:
-            # new card
-            lscore = sum(num_each_card)
-            if lscore >= 2:
-                # add last number of pairs
-                score += lscore * (lscore-1)
             break
-            # no reset, we're done (don't care about previous pairs
-            ## reset because we don't have the same card as before
-            #num_each_card = [0] * NUMBER_CLASSES
-            #num_each_card[card] = 1
+    pscore = pscore * (pscore - 1)
+    score += pscore
+
 
     # runs
     # find longest sequence of run in the last cards played,
     # without repeating cards
+    rscore = 0
     if len(cards_played) >= 3:
-        num_each_card = [0] * NUMBER_CLASSES 
-        rev = reversed(cards_played) # operate only on last cards played
-        classes = hand_classes(rev)
-        lscore = 0
-        for i in range(0, len(classes)):
-            num_each_card[classes[i]] += 1
-            if 2 in num_each_card:
-                # indicates a possible double run, and those don't count
+        buckets = [0] * NUMBER_CLASSES
+        classes = hand_classes(reversed(cards_played))
+        for card in classes:
+            buckets[card] += 1
+            if 2 in buckets:
+                # double run possible to detect; not valid in rules
                 break
-            # let score_runs do the hard work (avoid copying code)
-            #lscore_w = score_runs(rev[:i+1])
-            #lscore_wo = score_runs(rev[1:i+1])
-            lscore_w = score_runs(classes[-(i+1):])
-            lscore_wo = score_runs(classes[-(i+1):-1])
-            # ensure that the first card (i.e. what was played) is included
-            # in the score
-            lscore = lscore_w if lscore_wo < lscore_w else 0
-        score += lscore
-    return score
+            #tz = trim_zeros(buckets)
+            if 0 not in _trim_zeros(buckets):
+                # if we can remove leading and trailing zeros and have none left,
+                #   we have a run
+                bsum = sum(buckets)
+                rscore = bsum if bsum >= 3 else 0
+    score += rscore
 
+    return score #, sscore, pscore, rscore
+
+def _trim_zeros(arr):
+    s = 0
+    for i in arr:
+        if i == 0:
+            s += 1
+        else:
+            break
+
+    e = 0
+    for i in reversed(arr):
+        if i == 0:
+            e += 1
+        else:
+            break
+
+    #ret = deepcopy(arr[s:len(arr)-e])
+    ret = arr[s:len(arr)-e]
+    return ret
+    
 def random_card():
     return randint(0, 51)
 
