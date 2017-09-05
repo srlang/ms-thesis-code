@@ -33,12 +33,13 @@ class CribbageAgent(object):
 
     def _choose_cards(self):
         # default behavior: return (essentially) random 2 cards
+        # TODO: incorporate some percentage-based decision making
         return deepcopy(self.cards[:4]), deepcopy(self.cards[-2:])
 
-    def next_peg_card(self, cards_played):
+    def next_peg_card(self, cards_played, go=False):
         # tested
         if self.can_peg_more(cards_played):
-            to_play = self._select_next_peg_card(cards_played)
+            to_play = self._select_next_peg_card(cards_played, go=go)
             self._peg_cards_left.remove(to_play)
             self._peg_cards_gone.append(to_play)
             return to_play
@@ -56,9 +57,15 @@ class CribbageAgent(object):
                 (min(hand_values(self._peg_cards_left)) <=
                  31 - sum([card_value(card) for card in cards_played]))
 
-    def _select_next_peg_card(self, cards_played):
-        # default behavior: play random card
-        return self._peg_cards_left[0]
+    def _select_next_peg_card(self, cards_played, go=False):
+        try:
+            # default behavior: play random card
+            # ensure that only valid cards are used
+            valid_cards = [card for card in self._peg_cards_left
+                            if card_value(card) <= 31 - sum(hand_values(cards_played))]
+            return valid_cards[0]
+        except:
+            raise GoException
 
     def count_points(self, cut_card):
         # tested
@@ -82,6 +89,13 @@ class CribbageAgent(object):
             return 0
 
     # TODO
+
+class SmartCribbageAgent(CribbageAgent):
+
+    def _choose_cards(self):
+        # using self.cards[0:5]
+        # TODO
+        pass
 
 
 class GoException(Exception):
