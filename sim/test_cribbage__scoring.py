@@ -1,5 +1,5 @@
 from cribbage import *
-from cribbage import _trim_zeros
+from cribbage import _trim_zeros, _reset_pegging
 #import cribbage
 
 def test_card_suit():
@@ -104,6 +104,19 @@ def test__trim_zeros():
     assert _trim_zeros([0, 1, 2, 3, 0]) == [1, 2, 3]
     assert _trim_zeros([1, 2, 3, 0]) == [1, 2, 3]
     assert _trim_zeros([0, 1, 0, 1, 0]) == [1, 0, 1]
+
+def test__reset_pegging():
+    cards_played = []
+    assert not _reset_pegging(cards_played)
+
+    cards_played = [0, 1, 2]
+    assert not _reset_pegging(cards_played)
+
+    cards_played = [40, 41, 42]
+    assert not _reset_pegging(cards_played)
+
+    cards_played = [40, 41, 42, 1]
+    assert _reset_pegging(cards_played)
 
 def test_score_peg():
     # 15
