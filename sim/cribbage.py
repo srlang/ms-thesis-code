@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+from copy import deepcopy
 from random import randint, sample
 
-from copy import deepcopy
+from utils import PD
+
 
 def _list_comp(arr, func):
     ''' apply a function across a set of items '''
@@ -226,6 +228,9 @@ def _trim_zeros(arr):
 def random_card():
     return randint(0, 51)
 
+def _reset_pegging(cards_played):
+    return 31 == sum(hand_values(cards_played))
+
 class CribbageGame(object):
 
     def __init__(self, agent1, agent2=None):
@@ -274,21 +279,73 @@ class CribbageGame(object):
             self.rotate_dealer()
 
     def peg(self):
-        # TODO TODO TODO
-        #while _cards_to_be_played:
-        # figure out how to start with the correct player after 31
-        go_dealer = False
-        go_pone = False
+        # rule?: do you /have/ to go until 31 if given a go
+        #   doesn't seem to be the case, it may be beneficial to keep
+        # IS the case, see Rule 1.5 (e)
+
+        player, observer = self.pone, self.dealer
+        go = False
         cards_played = []
         cards_played_this_round = []
+        last_31 = False
 
-        starter, follower = self.pone, self.hand
-        go = False
-        player_with_go = None
+        PD("begin", "peg()")
 
-        # TODO: rule?: do you /have/ to go until 31 if given a go
-        #   doesn't seem to be the case, it may be beneficial to keep
+        while self._cards_to_be_played and not self.game_finished:
+            PD('begin loop with agent(%s)' % player._name, 'peg()')
+            last_31 = False
+
+            # let the player play his card
+            try:
+                # notable "issue": there is no checking for validity of card
+                #   played here. agents are expected to determine valid cards
+                #   themselves. technically, they can cheat if they don't check
+                played_card = player.next_peg_card(cards_played_this_round, go=go)
+                cards_played_this_round.append(played_card)
+                cards_played.append(played_card)
+                PD('>> Playing card [%d] for [%d] points' % (played_card, score_peg(cards_played_this_round)), 'peg()')
+                player.score += score_peg(cards_played_this_round)
+            except GoException:
+                # dumby, how could you forget this after all these years?
+                # Rule 1.5 (e) (2): player that calls "go" goes first next round
+                if go:
+                    PD('>> second go achieved, awarding points [%d]' % \
+                            1 if not _reset_pegging(cards_played_this_round) else 0,\
+                            'peg()')
+                    player.score += 1 if not _reset_pegging(cards_played_this_round) else 0
+                    # reset because we have reached the end of the round
+                    cards_played_this_round = []
+                    go = False
+                else:
+                    PD('>> first go achieved, passing play to other player', 'peg()')
+                    PD('>> forcefully swapping here to ensure correct path', 'peg()')
+                    player, observer = observer, player
+                    go = True
+
+            # swap who has the play, iff there is not a go
+            if not go:
+                PD('>> go == False, swapping players', 'peg()')
+                player, observer = observer, player
+            if _reset_pegging(cards_played_this_round):
+                PD('>> reached end of peg round (31 pts)', 'peg()')
+                cards_played_this_round = []
+                last_31 = True
+                pass
+
+            PD('end loop', 'peg()')
+
+        if not self.game_finished and not last_31:
+            # Give the last card point to the final player
+            # (which is at this point, thanks to the swap earlier, the observer)
+            PD('game has finished, awarding last card point', 'peg()')
+            observer.score += 1 # last card point
+
+        PD('end', 'peg()')
         pass
+
+    @property
+    def _cards_to_be_played(self):
+        return self.dealer.has_peg_cards_left() or self.pone.has_peg_cards_left()
 
     def count_points(self):
         self.pone.count_points(self.cut_card)
@@ -342,3 +399,6 @@ class CribbageGame(object):
         self.dealer.is_dealer = True
         self.pone.is_dealer = False
 
+
+class GoException(Exception):
+    pass
