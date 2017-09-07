@@ -64,7 +64,73 @@ def test_count_points():
     assert g.dealer.is_winner
 
 def test_peg():
-    assert False
+    # This will actually be a decent amount of work.
+    # I need to test the following:
+    #   1. GO's are given at the correct time.
+    #   2. No cards are played twice (not sure if code makes this even possible,
+    #       but check in case)
+    # take that back, strategy is not included, so it's not that bad
+    a,b,g = basic_setup()
+    g.assign_dealer()
+    g.deal_cards()
+    p,d = g.pone, g.dealer
+    p._name = 'pone'
+    d._name = 'deal'
+
+    # basic flow: both peg to 31, repeat: 0 complications
+    #                    SJ,    J,     SK,      K(6)
+    p._peg_cards_left = [40,    41,     49,     51]
+    #                   5(2),  E6(2),   K(2),  EA(2)
+    d._peg_cards_left = [16,    20,     50,     0]
+    p.score = 40
+    d.score = 40
+    g.peg()
+    assert p.score == 40 + 6
+    assert d.score == 40 + 2 + 2 + 2 + 2
+
+    # both peg, introduce a go and last-card into the mix
+    #                    S10,    E10(7) J      SJ
+    p._peg_cards_left = [36,    38,     40,     42]
+    #                    10(2)  S10     EJ(3)  EJ(3)
+    d._peg_cards_left = [37,    39,     41,     43]
+    p.score = 40
+    d.score = 40
+    g.peg()
+    assert p.score == 40 + 7
+    assert d.score == 40 + 2 + 3 + 3
+
+    # early exit because pone wins
+    p._peg_cards_left = [15, 37, 51, 50]
+    d._peg_cards_left = [38, 39, 40, 41]
+    p.score = 119
+    d.score = 40
+    g.peg()
+    assert p.score == 121
+    assert d.score == 40
+    assert p._peg_cards_left == [51, 50]
+    assert d._peg_cards_left == [39, 40, 41]
+
+    # early exit because dealer wins
+    p._peg_cards_left = [0, 1, 4, 5]
+    d._peg_cards_left = [2, 3, 6, 7]
+    p.score = 40
+    d.score = 120
+    g.peg()
+    assert p.score == 40
+    assert d.score == 120 + 2
+    assert p._peg_cards_left == [1, 4, 5]
+    assert d._peg_cards_left == [3, 6, 7]
+
+    # early exit because pone wins very close game
+    p._peg_cards_left = [10, 2, 4, 6]
+    d._peg_cards_left = [1, 3, 5, 7]
+    p.score = 120
+    d.score = 120
+    g.peg()
+    assert p.score == 120 + 2
+    assert d.score == 120
+    assert p._peg_cards_left == [4, 6]
+    assert d._peg_cards_left == [3, 5, 7]
 
 def test_deal_cards():
     a, b, g = basic_setup()
@@ -145,3 +211,24 @@ def test_rotate_dealer():
     game.rotate_dealer()
     assert game.dealer == pone
     assert game.pone == dealer
+
+def test__cards_to_be_played():
+    a,b,g = basic_setup()
+    g.assign_dealer()
+    d,p = g.dealer, g.pone
+
+    d._peg_cards_left = [1,2]
+    p._peg_cards_left = [3,4]
+    assert g._cards_to_be_played
+
+    d._peg_cards_left = [1]
+    p._peg_cards_left = [2,3]
+    assert g._cards_to_be_played
+
+    d._peg_cards_left = [1]
+    p._peg_cards_left = []
+    assert g._cards_to_be_played
+
+    p._peg_cards_left = [1]
+    d._peg_cards_left = []
+    assert g._cards_to_be_played
