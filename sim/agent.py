@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+# Sean R. Lang <sean.lang@cs.helsinki.fi>
+
 from copy import deepcopy
 
-from cribbage import score_hand, hand_values, card_value
+from cribbage import score_hand, hand_values, card_value, GoException
 
 class CribbageAgent(object):
 
@@ -22,6 +24,10 @@ class CribbageAgent(object):
         # tested
         self.score = 0
         self.crib = None
+        self._peg_cards_gone = []
+        self._peg_cards_left = []
+        # force initialization for _name field for debugging purposes
+        self._name = ''
 
     def choose_cards(self):
         # tested
@@ -29,11 +35,13 @@ class CribbageAgent(object):
         self.hand = keep
         #self.game.add_to_crib(toss)
         self._peg_cards_left = deepcopy(self.hand)
+        self._peg_cards_gone = []
         return keep, toss
 
     def _choose_cards(self):
         # default behavior: return (essentially) random 2 cards
         # TODO: incorporate some percentage-based decision making
+        #   this will go in SmartCribbageAgent
         return deepcopy(self.cards[:4]), deepcopy(self.cards[-2:])
 
     def next_peg_card(self, cards_played, go=False):
@@ -59,7 +67,8 @@ class CribbageAgent(object):
 
     def _select_next_peg_card(self, cards_played, go=False):
         try:
-            # default behavior: play random card
+            # default behavior: play "random" card
+            #   keep it predictable for testing purposes
             # ensure that only valid cards are used
             valid_cards = [card for card in self._peg_cards_left
                             if card_value(card) <= 31 - sum(hand_values(cards_played))]
@@ -96,7 +105,3 @@ class SmartCribbageAgent(CribbageAgent):
         # using self.cards[0:5]
         # TODO
         pass
-
-
-class GoException(Exception):
-    pass
