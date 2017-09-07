@@ -73,6 +73,13 @@ def test_next_peg_card():
     assert (card in agent._peg_cards_gone) and \
             (card not in agent._peg_cards_left)
 
+    # test that invalid cards are "skipped"
+    agent._peg_cards_left = [40, 41, 1]
+    agent._peg_cards_gone = [3]
+    cards_played = [37, 38, 39]
+    card = agent.next_peg_card(cards_played)
+    assert card == 1
+
 def test_count_points():
     agent = CribbageAgent()
 
