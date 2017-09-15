@@ -1,5 +1,8 @@
 from itertools import combinations
 
+#from .. import cribbage
+from cribbage import score_hand
+
 KEEP_NUMBER = 4
 
 def _strategy_interface(cards):
@@ -13,6 +16,7 @@ def _get_strategy_interface(module, strategy_str):
 def possible_keep_throw_choices(cards):
     # possible choices to keep and throw so that we know what
     # visual inspection: good
+    # tested for basic properties
     combos = combinations(cards, KEEP_NUMBER)
     ret = []
     for combo in combos:

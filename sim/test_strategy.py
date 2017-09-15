@@ -1,6 +1,8 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
+#import cribbage.strategy as strategy
 from strategy import *
+from strategy import _enumerate_possible_hand_values
 
 def test_possible_keep_throw_choices():
     cards = [1,2,3,4,5,6]
@@ -12,10 +14,12 @@ def test_possible_keep_throw_choices():
         for k in keep:
             assert k not in throw
             assert k in cards
-    #assert False
 
 def test__enumerate_possible_hand_values():
-    assert False
+    # All aces do not get improved by any possible cut card
+    keep = [0,1,2,3]
+    toss = [5,6]
+    assert _enumerate_possible_hand_values(keep,toss) == 46 * [12]
     pass
 
 def test_hand_compute_values():
@@ -76,11 +80,12 @@ def test_pegging_max_med():
     pass
 
 def test_hand_min_avg_crib():
-    test__stanley()
-    assert True
+    #test__stanley()
+    assert False
+    pass
 
 def test__stanley():
-    assert True
+    assert False
     pass
 
 def test_hand_max_avg_both():
