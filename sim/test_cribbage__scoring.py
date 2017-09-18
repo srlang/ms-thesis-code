@@ -76,6 +76,7 @@ def test_score_runs():
 def test_score_nobs():
     assert score_nobs([17, 18, 19, 41, 16]) == 0 # no right jack
     assert score_nobs([17, 18, 19, 40, 16]) == 1 # right jack, as we say
+    assert score_nobs([17, 18, 40, 19, 16]) == 1 # right jack, different order
 
 def test_score_flush():
     # re-test suits
@@ -99,6 +100,11 @@ def test_score_hand():
     assert score_hand([12, 13, 16, 20, 21]) == 24
     # A 2 10 Q K ==> 0
     assert score_hand([0, 5, 36, 47, 49]) == 0
+    # Including the cut_card separately
+    assert score_hand([0, 5, 36, 47], cut_card=49) == 0
+    assert score_hand([12, 13, 16, 20], 21) == 24
+    assert score_hand([17, 18, 40, 19], cut_card=16) == 29 # right jack, declared
+    assert score_hand([17, 18, 40, 19], 16) == 29 # right jack, positional
 
 def test__trim_zeros():
     assert _trim_zeros([0, 1, 2, 3, 0]) == [1, 2, 3]

@@ -36,7 +36,11 @@ def card_value(card):
 def hand_values(hand):
     return _list_comp(hand, card_value)
 
-def score_hand(hand, **kwargs):
+def score_hand(hand, cut_card=None, **kwargs):
+    PD('entering: hand(%s), cut_card(%s)' % (hand,cut_card), 'score_hand')
+    if cut_card is not None:
+        hand = hand + [cut_card]
+    PD('>> hand: %s' % str(hand), 'score_hand')
     return score_pairs(hand, **kwargs) + \
             score_runs(hand, **kwargs) + \
             score_fifteens(hand, **kwargs) + \
