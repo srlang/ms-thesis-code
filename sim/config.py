@@ -6,4 +6,4 @@
 Configuration options for the code for quick tuning and customizations.
 '''
 
-DEBUG = True
+DEBUG = False #True
