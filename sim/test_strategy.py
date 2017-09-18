@@ -1,8 +1,10 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
 #import cribbage.strategy as strategy
-from strategy import *
-from strategy import _enumerate_possible_hand_values
+from strategy   import      *
+from strategy   import      _enumerate_possible_hand_values, \
+                            _select_valued_hand
+from utils import PD
 
 def test_possible_keep_throw_choices():
     cards = [1,2,3,4,5,6]
@@ -20,54 +22,187 @@ def test__enumerate_possible_hand_values():
     keep = [0,1,2,3]
     toss = [5,6]
     assert _enumerate_possible_hand_values(keep,toss) == 46 * [12]
-    pass
+
+    keep = [16, 17, 18, 43] # 5, 5, 5, J
+    toss = [0, 1]           # A, A
+    expected = \
+            [14, 15]         + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [29]             + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [20, 20, 20, 21] + \
+            [22, 22, 22]     + \
+            [20, 20, 20, 21] + \
+            [20, 20, 20, 21]
+    assert _enumerate_possible_hand_values(keep,toss) == expected
 
 def test_hand_compute_values():
-    assert False
+    cards = [16, 17, 18, 43, 0, 1]
+    keep = [16, 17, 18, 43] # 5, 5, 5, J
+    toss = [0, 1]           # A, A
+    expected = \
+            [14, 15]         + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [29]             + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [20, 20, 20, 21] + \
+            [22, 22, 22]     + \
+            [20, 20, 20, 21] + \
+            [20, 20, 20, 21]
+    ret_d = hand_compute_value(cards, list_max)
+    assert ret_d[(tuple(keep),tuple(toss))] == 29
+    ret_d = hand_compute_value(cards, list_min)
+    assert ret_d[(tuple(keep),tuple(toss))] == 14
+    ret_d = hand_compute_value(cards, list_avg)
+    assert ret_d[(tuple(keep),tuple(toss))] == (sum(expected) / len(expected))
     pass
 
-def test_select_min_valued_hand():
-    assert False
-    pass
 
 def test_select_min_valued_hand():
-    assert False
+    cards = [16, 17, 18, 43, 0, 1]
+    keep = [16, 17, 18, 43] # 5, 5, 5, J
+    toss = [0, 1]           # A, A
+    expected = \
+            [14, 15]         + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [29]             + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [20, 20, 20, 21] + \
+            [22, 22, 22]     + \
+            [20, 20, 20, 21] + \
+            [20, 20, 20, 21]
+    poss_d = hand_compute_value(cards, list_min)
+    ret_t = select_min_valued_hand(poss_d)
+    PD('ret_t: %s' % str(ret_t), 'test_select_max_valued_hand')
+    #assert ret_d[(tuple(keep),tuple(toss))] == 29
+    assert poss_d[ret_t] == 4
+    pass
+
+def test_select_max_valued_hand():
+    cards = [16, 17, 18, 43, 0, 1]
+    keep = [16, 17, 18, 43] # 5, 5, 5, J
+    toss = [0, 1]           # A, A
+    expected = \
+            [14, 15]         + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [29]             + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [14, 14, 14, 15] + \
+            [20, 20, 20, 21] + \
+            [22, 22, 22]     + \
+            [20, 20, 20, 21] + \
+            [20, 20, 20, 21]
+    poss_d = hand_compute_value(cards, list_max)
+    ret_t = select_max_valued_hand(poss_d)
+    PD('ret_t: %s' % str(ret_t), 'test_select_max_valued_hand')
+    #assert ret_d[(tuple(keep),tuple(toss))] == 29
+    assert poss_d[ret_t] == 29
     pass
 
 def test__select_valued_hand():
-    assert False
+    d = {'a': 100, 'b': 50, 'c': 1}
+    assert _select_valued_hand(d, list_max) == 'a'
+    assert _select_valued_hand(d, list_min) == 'c'
     pass
 
 def test_possible_cribs():
-    assert False
+    keep = [0, 1, 2, 3]
+    toss = [4, 5]
+    poss = possible_cribs(keep,toss)
+    for pc in poss:
+        #PD('pc: %s' % str(pc), 'test_possible_cribs')
+        for k in keep:
+            assert k not in pc
+        for t in toss:
+            assert t in pc
+        for c in pc:
+            assert c not in keep
 
 def test_disjoint():
-    assert False
+    assert disjoint([1,2,3], [4,5,6])
+    assert disjoint([1,5,6], [2,3,4])
+    assert not disjoint([1,2,3], [3,4,5])
 
 def test_list_min():
-    assert False
+    assert list_min([1,2,3,4,5]) == 1
+    assert list_min([5,4,1,2,3]) == 1
 
 def test_list_max():
-    assert False
+    assert list_max([1,2,3,4,5]) == 5
+    assert list_max([5,4,1,2,3]) == 5
 
 def test_list_avg():
-    assert False
+    assert list_avg([1,2,3,4,5]) == 3
+    assert list_avg([5,4,1,2,3]) == 3
 
 ################
 
 def test_hand_max_min():
-    assert False
+    dealt = [0, 1, 2, 3, 4, 5]
+    assert hand_max_min(dealt) == ((0,1,2,3),(4,5))
+    
+    #         4, 5, 6, 8, 9, J      --> 4, 5, 6, 8 (interestingly enough)
+    dealt = [12, 16, 20, 28, 32, 41]
+    assert hand_max_min(dealt) == ((12, 16, 20, 28), (32, 41))
     pass
 
 def test_hand_max_avg():
-    assert False
+    #        A, A, 4, 4, 5, 6   --> 4, 4, 5, 6
+    dealt = [0, 1, 12, 13, 16, 20]
+    assert hand_max_avg(dealt) == ((12, 13, 16, 20), (0, 1))
     pass
 
 def test_hand_max_med():
-    assert False
+    #        A, A, 4, 4, 5, 6   --> 4, 4, 5, 6
+    dealt = [0, 1, 12, 13, 16, 20]
+    assert hand_max_med(dealt) == ((12, 13, 16, 20), (0, 1))
     pass
 
 def test_hand_max_poss():
+    #        5   5   5   J   J   J      --> 5 5 5 J
+    dealt = [16, 17, 18, 40, 41, 43]
+    assert hand_max_poss(dealt) == ((16, 17, 18, 43), (40,41))
+
+    #        4   4   5   6   7   8      --> 4 4 5 6
+    dealt = [12, 13, 16, 20, 24, 28]
+    assert hand_max_poss(dealt) == ((12, 13, 16, 20), (24, 28))
+
+    # mixed up this time for safety in testing
+    dealt = [12, 13, 24, 16, 28, 20]
+    assert hand_max_poss(dealt) == ((12, 13, 16, 20), (24, 28))
+    pass
+
+def test_hand_min_avg_crib():
+    test__stanley()
+    assert True
+    pass
+
+def test__stanley():
+    #       TODO
+    dealt = []
+    assert False
+    pass
+
+def test_hand_max_avg_both():
     assert False
     pass
 
@@ -79,23 +214,12 @@ def test_pegging_max_med():
     assert False
     pass
 
-def test_hand_min_avg_crib():
-    #test__stanley()
-    assert False
-    pass
-
-def test__stanley():
-    assert False
-    pass
-
-def test_hand_max_avg_both():
-    assert False
-    pass
-
-
 ################
 def test__strategy_interface():
-    assert False
+    assert True
+    pass
 
 def test__get_strategy_interface():
-    assert False
+    assert True
+    pass
+################
