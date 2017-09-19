@@ -192,14 +192,14 @@ def test_hand_max_poss():
     pass
 
 def test_hand_min_avg_crib():
-    test__stanley()
-    assert True
+    dealt = [0, 1, 12, 24, 36, 50]
+    assert hand_min_avg_crib(dealt) == ((0, 1, 12, 24), (36, 50))
     pass
 
 def test__stanley():
-    #       TODO
-    dealt = []
-    assert False
+    #       A,  A, 4, 7, 10, K
+    dealt = [0, 1, 12, 24, 36, 50]
+    assert _stanley(dealt) == ((0, 1, 12, 24), (36, 50))
     pass
 
 def test_hand_max_avg_both():
