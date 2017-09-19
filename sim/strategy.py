@@ -140,25 +140,35 @@ def possible_cribs(keep, throw):
     return possibilities
 
 def _stanley(cards):
-    # TODO
+    # TODO: rewrite
+    #   This is impractically slow. One hand takes 25s locally to make a decision
+    #   ((obviously) because of the bruteforcing,
+    #    using dictionaries don't turn out to be that noticeably bad)
     # Otherwise known as an extremely defensive strategy.
     # Avoid giving points to the dealer at all costs.
     # A stupid homage to a man I've never met: my great-grandfather who was
     # supposedly so defensive that he would throw away the chance ot a 
     # 29-hand to avoid giving the opposing player a pair in the crib.
+    PD('entering with hand=%s' % str(cards), '_stanley')
     crib_avg_possibilities = {}
-    for keep,throw in possible_keep_throw_combinations(cards):
+    for keep,throw in possible_keep_throw_choices(cards):
+        PD('>> analyzing keeping(%s) and throwing(%s)' % (keep,throw), '_stanley')
         poss_cribs = possible_cribs(keep,throw)
         summa = 0
         #numma = 0
-        for crib in poss_cribs:
-            for cut_card in range(52):
-                # throw is subset of crib
-                if cut_card not in crib and cut_card not in keep:
-                    summa += score_hand(throw, crib)
-            #numba += 1
-        #crib_avg_possibilities.append(summa / numba)
-        crib_avg_possibilities[(keep,throw)] = summa #/ numba
+#        ###
+#        for crib in poss_cribs:
+#            #PD('>>>> possible crib(%s)' % str(crib), '_stanley')
+#            for cut_card in range(52):
+#                # throw is subset of crib
+#                if cut_card not in crib and cut_card not in keep:
+#                    #summa += score_hand(throw, crib)
+#                    summa += score_hand(crib, cut_card)
+#            #numba += 1
+#        #crib_avg_possibilities.append(summa / numba)
+#        ###
+        PD('>> crib_avg_possibilities[k,t] = %d' % summa, '_stanley')
+        crib_avg_possibilities[(tuple(keep),tuple(throw))] = summa #/ numba
     return select_min_valued_hand(crib_avg_possibilities)
 
 def hand_min_avg_crib(cards):
