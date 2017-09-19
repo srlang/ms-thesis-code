@@ -37,10 +37,10 @@ def hand_values(hand):
     return _list_comp(hand, card_value)
 
 def score_hand(hand, cut_card=None, **kwargs):
-    PD('entering: hand(%s), cut_card(%s)' % (hand,cut_card), 'score_hand')
+    #PD('entering: hand(%s), cut_card(%s)' % (hand,cut_card), 'score_hand')
     if cut_card is not None:
         hand = hand + [cut_card]
-    PD('>> hand: %s' % str(hand), 'score_hand')
+    #PD('>> hand: %s' % str(hand), 'score_hand')
     return score_pairs(hand, **kwargs) + \
             score_runs(hand, **kwargs) + \
             score_fifteens(hand, **kwargs) + \
@@ -85,7 +85,7 @@ def score_runs(hand, **kwargs):
         l = 0
         prod = 1
         # source of error #3: no index bounds on this loop
-        while buckets[i] != 0:
+        while i < len(buckets) and buckets[i] != 0:
             l += 1
             prod *= buckets[i]
             i += 1
