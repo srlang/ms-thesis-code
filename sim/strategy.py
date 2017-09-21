@@ -2,9 +2,15 @@ from itertools  import combinations
 from statistics import median
 
 from cribbage   import score_hand
+from records    import Session,\
+                        PlayedHandRecord,\
+                        HandStatistics,\
+                        ThrowStatistics
 from utils      import PD
 
 KEEP_NUMBER = 4
+
+session = Session()
 
 ######
 # remnant of a time in which I thought of keeping each strategy in a separate
@@ -97,6 +103,7 @@ def list_med(values):
 # TODO: in the future, find a way to use pre-computed/stored values
 def hand_max_min(cards):
     # Safe strategy, pick the hand that has the most guaranteed points
+    #data = retrieve_statistics(Table, Property, cards)
     return select_max_valued_hand(hand_compute_value(cards, list_min))
 
 def hand_max_avg(cards):
@@ -182,3 +189,54 @@ def hand_max_avg_both(cards):
     # expected return from both combined.
     # Can be thought of as a combination of hand_max_*_hand & hand_max_avg_crib
     pass
+
+
+#################################
+def retrieve_statistics(table, prop, cards):
+    # Retreive statistics from the database for easier/quicker use
+    # Returns desired property from the first found instance of the card
+    #   combination found in the database
+    found = retrieve_all_statistics(table, cards)# .first()
+    if found is not None:
+        try:
+            return found.first().__dict__[prop]
+        except:
+            #raise Exception()
+            return None
+    else:
+        return None
+
+def retrieve_all_statistics(table, cards):
+    global session
+    found = None
+    try:
+        found = session.query(table).filter_by(card0=cards[0]).\
+                filter_by(card1=cards[1]).\
+                filter_by(card2=cards[2]).\
+                filter_by(card3=cards[3])
+    except:
+        pass
+    return found
+
+###
+# Statistics returns:
+#   {
+#       'max': <maximum>,
+#       'min': <minimum>,
+#       'avg': <average>, (adjusted to exclude impossible hands)
+#       'med': <median>
+#   }
+#   max is not adjusted because there are potentially other combinations that
+#       give the same result
+#   min is not adjusted because it will likely only be used as a guarantee,
+#       and it can't be worsened through more knowledge
+#   med is not adjusted because there isn't necessarily a formulaic way to do so
+###
+#def keep_stastics(keep, throw):
+#    pass
+#
+#def throw_statistics(keep, throw):
+#    pass
+#
+#def keep_throw_statistics(keep, throw):
+#    pass
