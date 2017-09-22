@@ -10,6 +10,7 @@ from config import SQL_ENGINE, SQL_ECHO
 engine = create_engine(SQL_ENGINE, echo=SQL_ECHO)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
+session = Session()
 
 
 def create_tables():
@@ -80,16 +81,6 @@ class AggregatePlayedHandRecord(Base):
     given_med = Column(Float)
     given_mod = Column(Integer)
 
-    # number of times this record has been access modulo <modest power of 2>
-    # This way, the implementation can update the record every time the integer
-    #   of the log_2 of the access_counter changes.
-    #   If the reset modulo parameter is 128, then on average, this saves 3-4
-    #   record refreshes every 100 records.
-    #   However, this comes at a cost of potentially "losing" 64 records.
-    #   It's a payoff I'll have to think about a bit more later down the line
-    # The main idea is that this will be visited only when it is chosen
-    #   which is FALSE, so this needs to be better
-    #access_counter = Column(Integer)
     # Instead let's have the records inserter also update this with a number
     # of the records available (sort of)
     # Keep the same updating as the access_counter, but refresh on this instead
@@ -97,20 +88,108 @@ class AggregatePlayedHandRecord(Base):
     records_refresh_counter = Column(Integer)
     pass
 
-access_AggregatePlayedHandRecord_counter = 0
-def access_AggregatePlayedHandRecord(cards):
-    global access_AggregatePlayedHandRecord_counter
-    global session
-    # TODO
-    access_AggregatePlayedHandRecord_counter += 1
-    pass
+# No need for special handling anymore
+#access_AggregatePlayedHandRecord_counter = 0
+#def access_AggregatePlayedHandRecord(cards):
+#    global access_AggregatePlayedHandRecord_counter
+#    global session
+#    # TODO
+#    access_AggregatePlayedHandRecord_counter += 1
+#    pass
 
 input_PlayedHandRecord_counter = 0
 def input_PlayedHandRecord(cards, gained, given):
+    '''
+    Input a single record for how many points were given/gained from a single
+    round of play.
+    This will also update the aggregate record for the hands periodically
+    according to a power scheme. Every time the floor of the log_2 of the
+    counter changes, the aggregate record will be re-polled.
+    Because this will cause a lot of records to be ignored for a while after
+    the counter increases to only a modest amount, the counter will be reset
+    after reaching 128.
+    This yields an average refresh rate of 7 refreshes per 128 records, which
+    is roughly 1 refresh every 18 records, which is nice from a performance
+    perspective, and also avoids the issue of having too little data in the
+    beginning phases of the game.
+    '''
     global input_PlayedHandRecord_counter
     global session
-    # TODO
-    input_PlayedHandRecord_counter += 1
+    record = PlayedHandRecord(
+                card0=cards[0],
+                card1=cards[1],
+                card2=cards[2],
+                card3=cards[3],
+                score_gained=gained,
+                score_given=given)
+    session.add(record)
+
+    need_to_add = False
+    try:
+        agg_rec = session.query(AggregatePlayedHandRecord).filter_by(
+                    card0=cards[0],
+                    card1=cards[1],
+                    card2=cards[2],
+                    card3=cards[3]).first()
+        if agg_rec is not None:
+            # add to counter, potentially refresh
+            agg_rec.records_refresh_counter += ((agg_rec.records_refresh_counter + 1)\
+                                                    % AGG_REC_REFRESH_MODULO)
+            agg_rec.records_refresh_counter = max(agg_rec.records_refresh_counter, 2)
+            # refresh if the lower bound power of 2 has changed to refresh 
+            #   less as time passes more and more
+            if int(log2(agg_rec.records_refresh_counter)) != \
+                    int(log2(agg_rec.records_refresh_counter - 1)):
+                records = session.query(PlayedHandRecord).filter_by(\
+                            card0=cards[0],
+                            card1=cards[1],
+                            card2=cards[2],
+                            card3=cards[3])
+                given = [r.score_given for r in records]
+                agg_rec.given_min = min(given)
+                agg_rec.given_max = max(given)
+                agg_rec.given_avg = mean(given)
+                agg_rec.given_med = median(given)
+                agg_rec.given_mod = mode(given)
+
+                gained = [r.score_gained for r in records]
+                agg_rec.gained_min = min(gained)
+                agg_rec.gained_max = max(gained)
+                agg_rec.gained_avg = mean(gained)
+                agg_rec.gained_med = median(gained)
+                agg_rec.gained_mod = mode(gained)
+                session.commit()
+        else:
+            need_to_add = True
+    except:
+        need_to_add = True
+
+    if need_to_add:
+        agg_rec = AggregatePlayedHandRecord(
+                    card0=cards[0],
+                    card1=cards[1],
+                    card2=cards[2],
+                    card3=cards[3],
+                    given_min=given,
+                    given_max=given,
+                    given_avg=given,
+                    given_med=given,
+                    given_mod=given,
+                    gained_min=gained,
+                    gained_max=gained,
+                    gained_avg=gained,
+                    gained_med=gained,
+                    gained_mod=gained,
+                    records_refresh_counter=1)
+        session.add(agg_rec)
+        session.commit()
+    input_PlayedHandRecord_counter = (input_PlayedHandRecord_counter + 1) %\
+                                        DB_UPDATE_SAVE_INTERVAL_PLAYED_HAND
+    if input_PlayedHandRecord_counter == 0:
+        try:
+            session.commit()
+        except InvalidRequestError:
+            pass # Do nothing, we've already committed
     pass
 
 class RawHandStatistics(Base):
@@ -125,24 +204,11 @@ class RawHandStatistics(Base):
     # TODO
     min = Column(Integer)
     max = Column(Integer)
-    med = Column(Integer)
     avg = Column(Integer)
+    med = Column(Float)
+    mod = Column(Float)
     pass
 
-
-#class ThrowStatistics(Base):
-#
-#    __tablename__ = 'throw_stats'
-#
-#    card0 = Column(Integer)
-#    card1 = Column(Integer)
-#    card2 = Column(Integer)
-#    card3 = Column(Integer)
-#
-#    min = Column(Integer)
-#    max = Column(Integer)
-#    med = Column(Integer)
-#    avg = Column(Integer)
 
 
 class KeepThrowStatistics(Base):
@@ -164,13 +230,14 @@ class KeepThrowStatistics(Base):
     tcard0 = Column(Integer)
     tcard1 = Column(Integer)
 
-    # Statistics for the
+    # Statistics for the kept cards
     kmin = Column(Integer)
     kmax = Column(Integer)
     kmed = Column(Float)
     kavg = Column(Float)
     kmod = Column(Integer)
 
+    # statistics for the thrown cards
     tmin = Column(Integer)
     tmax = Column(Integer)
     tmed = Column(Float)
@@ -180,8 +247,16 @@ class KeepThrowStatistics(Base):
 
 def populate_keep_throw_statistics(start_keep=[0, 1, 2, 3], start_throw=[4,5]):
     # TODO: connection stuff
+    global session
 
     # Connect to database
+    #session = Session()
+    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 
     # Find keep/throw possibilities
     # Run through possibilities
