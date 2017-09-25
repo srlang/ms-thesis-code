@@ -3,6 +3,8 @@
 #import cribbage.strategy as strategy
 from strategy   import      *
 from strategy   import      _enumerate_possible_hand_values, \
+                            _enumerate_possible_toss_values, \
+                            _stanley, \
                             _select_valued_hand
 from utils import PD
 
@@ -16,6 +18,13 @@ def test_possible_keep_throw_choices():
         for k in keep:
             assert k not in throw
             assert k in cards
+
+def test__enumerate_possible_toss_values():
+    keep = [1,2,3,4]
+    toss = [5,6]
+    poss = _enumerate_possible_toss_values(keep,toss)
+    assert len(poss) == 15180 # 46 choose 3
+
 
 def test__enumerate_possible_hand_values():
     # All aces do not get improved by any possible cut card
