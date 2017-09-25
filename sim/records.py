@@ -1,9 +1,11 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
-from sqlalchemy                 import Column, Integer, Float, String
+from sqlalchemy                 import Boolean, Column, Float, Integer, String
 from sqlalchemy                 import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm             import sessionmaker
+
+from statistics import mean, median, mode
 
 from config import SQL_ENGINE, SQL_ECHO
 
@@ -88,15 +90,6 @@ class AggregatePlayedHandRecord(Base):
     records_refresh_counter = Column(Integer)
     pass
 
-# No need for special handling anymore
-#access_AggregatePlayedHandRecord_counter = 0
-#def access_AggregatePlayedHandRecord(cards):
-#    global access_AggregatePlayedHandRecord_counter
-#    global session
-#    # TODO
-#    access_AggregatePlayedHandRecord_counter += 1
-#    pass
-
 input_PlayedHandRecord_counter = 0
 def input_PlayedHandRecord(cards, gained, given):
     '''
@@ -133,7 +126,7 @@ def input_PlayedHandRecord(cards, gained, given):
                     card3=cards[3]).first()
         if agg_rec is not None:
             # add to counter, potentially refresh
-            agg_rec.records_refresh_counter += ((agg_rec.records_refresh_counter + 1)\
+            agg_rec.records_refresh_counter = ((agg_rec.records_refresh_counter + 1)\
                                                     % AGG_REC_REFRESH_MODULO)
             agg_rec.records_refresh_counter = max(agg_rec.records_refresh_counter, 2)
             # refresh if the lower bound power of 2 has changed to refresh 
@@ -201,13 +194,11 @@ class RawHandStatistics(Base):
     card2 = Column(Integer)
     card3 = Column(Integer)
 
-    # TODO
     min = Column(Integer)
     max = Column(Integer)
-    avg = Column(Integer)
+    avg = Column(Float)
     med = Column(Float)
-    mod = Column(Float)
-    pass
+    mod = Column(Integer)
 
 
 
@@ -246,17 +237,23 @@ class KeepThrowStatistics(Base):
 
 
 def populate_keep_throw_statistics(start_keep=[0, 1, 2, 3], start_throw=[4,5]):
-    # TODO: connection stuff
     global session
 
-    # Connect to database
-    #session = Session()
     # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
     # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
     # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
     # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
     # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
     # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+
+    poss_hands = combinations(range(52), 6)
+    possible_keep_throws = []
+    for hand in poss_hands:
+        keeps = combinations(hand, 4)
+        for keep in keeps:
+            throw = [c for c in hand if c not in keep]
+            possible_keep_throws.append((list(keep), list(throw)))
+        #possible_keep_throws += [list(x) for x in 
 
     # Find keep/throw possibilities
     # Run through possibilities
@@ -291,10 +288,10 @@ def _populate_keep_throw_statistics(keep, throw):
                     filter_by(tcard1=throw[1])
     if found_data is None:
         # Calculate statistics and add to database
-        # TODO
+
         # Calculate statistics
-        keep_vals = []
-        throw_vals = []
+        keep_vals = _enumerate_possible_hand_values(keep, throw)
+        throw_vals = _enumerate_possible_toss_values(keep, throw)
 
         # add new row to database
         to_add = KeepThrowStatistics(
@@ -310,13 +307,13 @@ def _populate_keep_throw_statistics(keep, throw):
                     kmin=min(keep_vals),
                     kmax=max(keep_vals),
                     kmed=median(keep_vals),
-                    kavg=(sum(keep_vals)/len(keep_vals)),
+                    kavg=mean(keep_vals),
                     kmod=mode(keep-vals),
                     # thrown stats
                     tmin=min(throw_vals),
                     tmax=max(throw_vals),
                     tmed=median(throw_vals),
-                    tavg=(sum(throw_vals)/len(throw_vals)),
+                    tavg=mean(throw_vals),
                     tmod=mode(throw_vals))
 
         session.add(to_add)
@@ -324,3 +321,56 @@ def _populate_keep_throw_statistics(keep, throw):
         return True
     else:
         return False
+
+class PlayedRoundRecord(Base):
+
+    '''
+    Not entirely sure I want to do this.
+    Do I want to adjust weights of each strategy, or keep track of their actual
+    performance and decide based on that?
+    N.B.: Ask Dr. Roos
+    '''
+
+    __tablename__ = 'played_round'
+
+    id = Column(Integer, primary_key=True)
+
+
+    my_score = Column(Integer)
+    opp_score = Column(Integer)
+    am_dealer = Column(Boolean)
+
+    score_gained = Column(Integer)
+    score_given = Column(Integer)
+
+
+class StrategyRecord(Base):
+
+    __tablename__ = 'strategy'
+
+    id = Column(Integer, primary_key=True)
+
+    my_score = Column(Integer)
+    opp_score = Column(Integer)
+    am_dealer = Column(Boolean)
+
+    # Percentage of "confidence" in each strategy
+    # Otherwise interpreted as the percentage in which strategy s should be
+    #   chosen at this stage in the game
+    strategy_a = Column(Float)
+    strategy_b = Column(Float)
+    strategy_c = Column(Float)
+
+    def reward(self, strategy):
+        # TODO
+        # Reward a strategy for good results by increasings its percentage of
+        #   being chosen at this point (and decreasing others')
+        # TODO
+        pass
+
+    def penalize(self, strategy):
+        # TODO
+        # Penalize a strategy for poor results by lowering its percentage
+        #   chance of being picked (and boosting others')
+        # TODO
+        pass
