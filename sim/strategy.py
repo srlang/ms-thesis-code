@@ -2,15 +2,15 @@ from itertools  import combinations
 from statistics import median
 
 from cribbage   import score_hand
-from records    import Session,\
-                        PlayedHandRecord,\
-                        HandStatistics,\
-                        ThrowStatistics
+#from records    import Session,\
+#                        PlayedHandRecord,\
+#                        HandStatistics,\
+#                        ThrowStatistics
 from utils      import PD
 
 KEEP_NUMBER = 4
 
-session = Session()
+#session = Session()
 
 ######
 # remnant of a time in which I thought of keeping each strategy in a separate
@@ -47,9 +47,30 @@ def _enumerate_possible_hand_values(keep, toss):
     # tested
     possible_cut_cards = [x for x in range(52)
             if x not in toss and x not in keep]
-    possible_hand_values = []
-    for cut_card in possible_cut_cards:
-        possible_hand_values.append(score_hand(keep, cut_card))
+    #possible_hand_values = []
+    #for cut_card in possible_cut_cards:
+    #    possible_hand_values.append(score_hand(keep, cut_card))
+    possible_hand_values = [score_hand(keep, cc) for cc in possible_cut_cards]
+    return possible_hand_values
+
+def _enumerate_possible_toss_values(keep, toss):
+    # Enumerate possible hand values FOR THE CRIB knowing which cards are kept
+    # and which are tossed
+    # technically, this will potentially misscore or miss the score for a
+    # right-jack situation.
+    # However, since this is usually a minor occurrence and speed is paramount
+    # for this to avoid waiting YEARS, I'll take this minor inaccuracy and
+    # make sure to note it down in the paper.
+    # N.B. Potentially misses/misrepresents right-jack situations
+    possible_cards_left = [x for x in range(52)
+            if x not in toss and x not in keep]
+    #possible_hand_values = []
+    possible_remainders = combinations(possible_cards_left, 3)
+    #for poss_rem in possible_remainders:
+        #combined = toss + list(poss_rem)
+        #possible_hand_values.append(score_hand(combined))
+    possible_hand_values = [score_hand(toss+list(pr)) \
+                            for pr in possible_remainders]
     return possible_hand_values
 
 def hand_compute_value(cards, list_func):
