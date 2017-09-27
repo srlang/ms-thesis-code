@@ -1,15 +1,22 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
+from math                       import log2
+
 from sqlalchemy                 import Boolean, Column, Float, Integer, String
 from sqlalchemy                 import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm             import sessionmaker
 
-from statistics import mean, median, mode
+from statistics                 import mean, median, mode, StatisticsError
 
-from config import SQL_ENGINE, SQL_ECHO
+from config                     import  DB_ENGINE,\
+                                        DB_ECHO,\
+                                        DB_UPDATE_SAVE_INTERVAL_AGGPLAYEDHAND,\
+                                        DB_UPDATE_SAVE_INTERVAL_PLAYED_HAND,\
+                                        DB_AGG_REC_REFRESH_MODULO
+from utils                      import  PD
 
-engine = create_engine(SQL_ENGINE, echo=SQL_ECHO)
+engine = create_engine(DB_ENGINE, echo=DB_ECHO)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 session = Session()
@@ -47,6 +54,10 @@ class PlayedHandRecord(Base):
     # how many points were yielded to the opponent in play
     score_given = Column(Integer)
 
+
+    def hand(self):
+        return [self.card0, self.card1, self.card2, self.card3]
+
     pass
 
 class AggregatePlayedHandRecord(Base):
@@ -57,6 +68,8 @@ class AggregatePlayedHandRecord(Base):
     Keep this updated regularly.
     This is created to allow the implementation to avoid unnecessary, resource-
     consuming database queries all the time.
+    For any instance in which the mode is not unique, the value of x_mod will
+    be equivalent to the median simply for ease of use.
     '''
 
     __tablename__ = 'aggregate_played_hands'
@@ -88,8 +101,16 @@ class AggregatePlayedHandRecord(Base):
     # Keep the same updating as the access_counter, but refresh on this instead
     # N.B. Not an accurate count for the actual number of records
     records_refresh_counter = Column(Integer)
+
+
+    def hand(self):
+        return [self.card0, self.card1, self.card2, self.card3]
     pass
 
+# N.B.:
+#   Unfortunately only thought of this well after writing all this,
+#   but these records don't take into account the fact that the pone plays
+#   first and that the
 input_PlayedHandRecord_counter = 0
 def input_PlayedHandRecord(cards, gained, given):
     '''
@@ -106,6 +127,7 @@ def input_PlayedHandRecord(cards, gained, given):
     perspective, and also avoids the issue of having too little data in the
     beginning phases of the game.
     '''
+    PD('entering', 'input_PlayedHandRecord')
     global input_PlayedHandRecord_counter
     global session
     record = PlayedHandRecord(
@@ -118,46 +140,66 @@ def input_PlayedHandRecord(cards, gained, given):
     session.add(record)
 
     need_to_add = False
+    agg_rec = None
     try:
+        PD('> querying for aggregate record', 'input_PlayedHandRecord')
         agg_rec = session.query(AggregatePlayedHandRecord).filter_by(
                     card0=cards[0],
                     card1=cards[1],
                     card2=cards[2],
-                    card3=cards[3]).first()
-        if agg_rec is not None:
-            # add to counter, potentially refresh
-            agg_rec.records_refresh_counter = ((agg_rec.records_refresh_counter + 1)\
-                                                    % AGG_REC_REFRESH_MODULO)
-            agg_rec.records_refresh_counter = max(agg_rec.records_refresh_counter, 2)
-            # refresh if the lower bound power of 2 has changed to refresh 
-            #   less as time passes more and more
-            if int(log2(agg_rec.records_refresh_counter)) != \
-                    int(log2(agg_rec.records_refresh_counter - 1)):
-                records = session.query(PlayedHandRecord).filter_by(\
-                            card0=cards[0],
-                            card1=cards[1],
-                            card2=cards[2],
-                            card3=cards[3])
-                given = [r.score_given for r in records]
-                agg_rec.given_min = min(given)
-                agg_rec.given_max = max(given)
-                agg_rec.given_avg = mean(given)
-                agg_rec.given_med = median(given)
-                agg_rec.given_mod = mode(given)
-
-                gained = [r.score_gained for r in records]
-                agg_rec.gained_min = min(gained)
-                agg_rec.gained_max = max(gained)
-                agg_rec.gained_avg = mean(gained)
-                agg_rec.gained_med = median(gained)
-                agg_rec.gained_mod = mode(gained)
-                session.commit()
-        else:
-            need_to_add = True
+                    card3=cards[3]).one_or_none()
     except:
+        PD('> Aggregate Record not found, need to create', 'input_PlayedHandRecord')
+        need_to_add = True
+
+    PD('> agg_rec=%s' % str(agg_rec), 'input_PlayedHandRecord')
+    if agg_rec is not None:
+        PD('>> agg_rec has been found', 'input_PlayedHandRecord')
+        # add to counter, potentially refresh
+        agg_rec.records_refresh_counter = ((agg_rec.records_refresh_counter + 1)\
+                                                % DB_AGG_REC_REFRESH_MODULO)
+        # ensure log(refresh_counter) and log(refresh_counter-1) exist
+        agg_rec.records_refresh_counter = max(agg_rec.records_refresh_counter, 2)
+        # refresh if the lower bound power of 2 has changed to refresh 
+        #   less as time passes more and more
+        PD('agg_rec.records_refresh_counter=%d' % agg_rec.records_refresh_counter,
+                'input_PlayedHandRecord')
+        if int(log2(agg_rec.records_refresh_counter)) != \
+                int(log2(agg_rec.records_refresh_counter - 1)):
+            records = session.query(PlayedHandRecord).filter_by(\
+                        card0=cards[0],
+                        card1=cards[1],
+                        card2=cards[2],
+                        card3=cards[3])
+            given_ = [r.score_given for r in records]
+            PD('Updating given stats for hand=%s with given=%s'\
+                    % (cards, given_), 'input_PlayedHandRecord')
+            agg_rec.given_min = min(given_)
+            agg_rec.given_max = max(given_)
+            agg_rec.given_avg = mean(given_)
+            agg_rec.given_med = median(given_)
+            try:
+                agg_rec.given_mod = mode(given_)
+            except StatisticsError:
+                agg_rec.given_mod = agg_rec.given_med
+
+            gained_ = [r.score_gained for r in records]
+            PD('Updating given stats for hand=%s with gained=%s'\
+                    % (cards, gained_), 'input_PlayedHandRecord')
+            agg_rec.gained_min = min(gained_)
+            agg_rec.gained_max = max(gained_)
+            agg_rec.gained_avg = mean(gained_)
+            agg_rec.gained_med = median(gained_)
+            try:
+                agg_rec.gained_mod = mode(gained_)
+            except StatisticsError:
+                agg_rec.gained_mod = agg_rec.gained_med
+            session.commit()
+    else:
         need_to_add = True
 
     if need_to_add:
+        PD('>> need_to_add, creating AggregatePlayedHandRecord object', 'input_PlayedHandRecord')
         agg_rec = AggregatePlayedHandRecord(
                     card0=cards[0],
                     card1=cards[1],
@@ -174,20 +216,31 @@ def input_PlayedHandRecord(cards, gained, given):
                     gained_med=gained,
                     gained_mod=gained,
                     records_refresh_counter=1)
+        PD('>> adding new aggregate record to the database', 'input_PlayedHandRecord')
         session.add(agg_rec)
+        PD('>> committing transaction', 'input_PlayedHandRecord')
         session.commit()
+        PD('>>> transaction commit successful', 'input_PlayedHandRecord')
     input_PlayedHandRecord_counter = (input_PlayedHandRecord_counter + 1) %\
                                         DB_UPDATE_SAVE_INTERVAL_PLAYED_HAND
+    PD('> input_PHR_counter=%d' % input_PlayedHandRecord_counter, 'input_PlayedHandRecord')
     if input_PlayedHandRecord_counter == 0:
+        PD('>> need to try to commit the transaction', 'input_PlayedHandRecord')
         try:
             session.commit()
+            PD('>>> commit successful', 'input_PlayedHandRecord')
         except InvalidRequestError:
+            PD('>>> commit unnecessary', 'input_PlayedHandRecord')
             pass # Do nothing, we've already committed
-    pass
+        except Exception as e:
+            PD('>>> commit failed: %s' % str(e), 'input_PlayedHandRecord')
+    PD('exiting', 'input_PlayedHandRecord')
 
 class RawHandStatistics(Base):
 
     __tablename__ = 'raw_hands_stats'
+
+    id = Column(Integer, primary_key=True)
 
     card0 = Column(Integer)
     card1 = Column(Integer)
@@ -210,6 +263,8 @@ class KeepThrowStatistics(Base):
     #   variance from the thrown cards are not really all that important.
 
     __tablename__ = 'keep_throw_stats'
+
+    id = Column(Integer, primary_key=True)
 
     # Cards kept in the player's own hand
     kcard0 = Column(Integer)
@@ -239,13 +294,6 @@ class KeepThrowStatistics(Base):
 def populate_keep_throw_statistics(start_keep=[0, 1, 2, 3], start_throw=[4,5]):
     global session
 
-    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-    # TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-
     poss_hands = combinations(range(52), 6)
     possible_keep_throws = []
     for hand in poss_hands:
@@ -253,7 +301,6 @@ def populate_keep_throw_statistics(start_keep=[0, 1, 2, 3], start_throw=[4,5]):
         for keep in keeps:
             throw = [c for c in hand if c not in keep]
             possible_keep_throws.append((list(keep), list(throw)))
-        #possible_keep_throws += [list(x) for x in 
 
     # Find keep/throw possibilities
     # Run through possibilities
