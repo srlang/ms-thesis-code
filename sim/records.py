@@ -1,22 +1,31 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
-from math                       import log2
+from itertools                  import  combinations
+from math                       import  log2
 
-from sqlalchemy                 import Boolean, Column, Float, Integer, String
-from sqlalchemy                 import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm             import sessionmaker
+from sqlalchemy                 import  Boolean, Column, Float, Integer, String
+from sqlalchemy                 import  create_engine
+from sqlalchemy.ext.declarative import  declarative_base
+from sqlalchemy.orm             import  sessionmaker
 
-from statistics                 import mean, median, mode, StatisticsError
+from sqlite3                    import  dbapi2 as sqlite
 
-from config                     import  DB_ENGINE,\
+from statistics                 import  mean, median, mode, StatisticsError
+
+
+
+from config                     import  DEBUG,\
+                                        DB_ENGINE,\
                                         DB_ECHO,\
                                         DB_UPDATE_SAVE_INTERVAL_AGGPLAYEDHAND,\
                                         DB_UPDATE_SAVE_INTERVAL_PLAYED_HAND,\
+                                        DB_POPULATE_SAVE_INTERVAL,\
                                         DB_AGG_REC_REFRESH_MODULO
+from strategy                   import  _enumerate_possible_hand_values,\
+                                        _enumerate_possible_toss_values
 from utils                      import  PD
 
-engine = create_engine(DB_ENGINE, echo=DB_ECHO)
+engine = create_engine(DB_ENGINE, echo=DB_ECHO, module=sqlite)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 session = Session()
@@ -292,47 +301,82 @@ class KeepThrowStatistics(Base):
 
 
 def populate_keep_throw_statistics(start_keep=[0, 1, 2, 3], start_throw=[4,5]):
+    # Still is a very slow operation
+    #   According to my manual timing, 10 new records can be inserted in
+    #   roughly 6.4 seconds.
+    #   At this speed, it would take 150 days to populate just this database
+    #   table.
     global session
+    PD('entering', 'populate_keep_throw_statistics')
 
+    PD('> enumerating all possible keep,throw possibilities for all hands...',
+            'populate_keep_throw_statistics')
     poss_hands = combinations(range(52), 6)
+    if DEBUG:
+        poss_hands = combinations(range(10), 6)
+    # hard code 52 c 6
+    PD('>> num possible dealt hands=%d' % 20358520, 'populate_keep_throw_statistics')
     possible_keep_throws = []
     for hand in poss_hands:
+        PD('>>> dealing with hand: %s' % str(hand), 'populate_keep_throw_statistics')
         keeps = combinations(hand, 4)
         for keep in keeps:
             throw = [c for c in hand if c not in keep]
             possible_keep_throws.append((list(keep), list(throw)))
+    total = len(possible_keep_throws)
+    PD('> enumerating done (%d total)' % total,
+            'populate_keep_throw_statistics')
 
     # Find keep/throw possibilities
     # Run through possibilities
     failed = 0
     increased = 0
+    PD('> running through keep,throw possibilities', 'populate_keep_throw_statistics')
     for keep,throw in possible_keep_throws:
+        PD('>> trying to insert keep=%s, throw=%s' % (keep, throw),
+                'populate_keep_throw_statistics')
         try:
+            PD('>>> calling _populate_keep_throw_statistics', 'populate_keep_throw_statistics')
             inc = _populate_keep_throw_statistics(keep, throw)
+            PD('>>>> returned success=%s' % inc, 'populate_keep_throw_statistics')
             increased += 1 if inc else 0
-            if increased % POPULATE_SAVE_INTERVAL == 0:
+            if increased % DB_POPULATE_SAVE_INTERVAL == 0:
+                PD('>>>>> increased enough to commit', 'populate_keep_throw_statistics')
                 # commit transactions every so often to avoid unnecessary
                 # slowing down but also avoid losing all progress due to some
                 # stupid error occurring midway
                 session.commit()
-        except:
+            PD('>>> "succeeded"', 'populate_keep_throw_statistics')
+        except Exception as e:
             # Database interaction failed
+            PD('>>> FAILED!!! (%s)' % str(e), 'populate_keep_throw_statistics')
             failed += 1
+    PD('> ending the population stage with %d inserted of %d total, %d failed' % \
+            (increased, total, failed),
+            'populate_keep_throw_statistics')
 
     # make sure to commit all pending transactions at the end of insertions
-    session.commit()
+    try:
+        PD('> committing', 'populate_keep_throw_statistics')
+        session.commit()
+        PD('>> successful', 'populate_keep_throw_statistics')
+    except InvalidRequestError:
+        PD('>> unnecessary', 'populate_keep_throw_statistics')
+    except Exception as e:
+        PD('>> failed (%s)' % str(e), 'populate_keep_throw_statistics')
 
 
 def _populate_keep_throw_statistics(keep, throw):
     # Populate the individual keep/throw possibility with all statistics
     # as desired.
     # Dumb method. No handling of any exceptions, etc.
-    found_data = KeepThrowStatistics.query(kcard0=keep[0]).\
-                    filter_by(kcard1=keep[1]).\
-                    filter_by(kcard2=keep[2]).\
-                    filter_by(kcard3=keep[3]).\
-                    filter_by(tcard0=throw[0]).\
-                    filter_by(tcard1=throw[1])
+    found_data = session.query(KeepThrowStatistics).filter_by(\
+                    kcard0=keep[0],
+                    kcard1=keep[1],
+                    kcard2=keep[2],
+                    kcard3=keep[3],
+                    tcard0=throw[0],
+                    tcard1=throw[1]).one_or_none()
     if found_data is None:
         # Calculate statistics and add to database
 
@@ -341,6 +385,18 @@ def _populate_keep_throw_statistics(keep, throw):
         throw_vals = _enumerate_possible_toss_values(keep, throw)
 
         # add new row to database
+        kmed = median(keep_vals)
+        kmod = kmed
+        try:
+            kmod = mode(keep_vals)
+        except StatisticsError:
+            kmod = kmed
+        tmed = median(throw_vals)
+        tmod = tmed
+        try:
+            tmod = mode(throw_vals)
+        except StatisticsError:
+            tmod = tmed
         to_add = KeepThrowStatistics(
                     # kept cards
                     kcard0=keep[0],
@@ -353,15 +409,15 @@ def _populate_keep_throw_statistics(keep, throw):
                     # Keep stats
                     kmin=min(keep_vals),
                     kmax=max(keep_vals),
-                    kmed=median(keep_vals),
+                    kmed=kmed,
                     kavg=mean(keep_vals),
-                    kmod=mode(keep-vals),
+                    kmod=kmod,
                     # thrown stats
                     tmin=min(throw_vals),
                     tmax=max(throw_vals),
-                    tmed=median(throw_vals),
+                    tmed=tmed,
                     tavg=mean(throw_vals),
-                    tmod=mode(throw_vals))
+                    tmod=tmod)
 
         session.add(to_add)
         #session.commit()
@@ -421,3 +477,11 @@ class StrategyRecord(Base):
         #   chance of being picked (and boosting others')
         # TODO
         pass
+
+
+def main_populate():
+    create_tables()
+    populate_keep_throw_statistics()
+
+if __name__ == '__main__':
+    main_populate()
