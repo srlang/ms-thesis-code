@@ -306,6 +306,12 @@ def populate_keep_throw_statistics(start_keep=[0, 1, 2, 3], start_throw=[4,5]):
     #   roughly 6.4 seconds.
     #   At this speed, it would take 150 days to populate just this database
     #   table.
+    # N.B.: ask Dr. Roos for directions at this point
+    #  options:
+    #   1: run RIGHT NOW and still have 6 months wait (guess)
+    #   2: rewrite population code (and scoring) into a lower-level, more
+    #       parallelizable language
+    #   3: take that performance hit when we are dealt each hand?
     global session
     PD('entering', 'populate_keep_throw_statistics')
 
