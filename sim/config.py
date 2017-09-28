@@ -9,7 +9,8 @@ Configuration options for the code for quick tuning and customizations.
 DEBUG = True
 
 if DEBUG:
-    DB_ENGINE = 'sqlite:///:memory:'
+    #DB_ENGINE = 'sqlite:///:memory:'
+    DB_ENGINE = 'sqlite+pysqlite:///tmp_db.db'
     DB_ECHO = False #True
 
     DB_POPULATE_SAVE_INTERVAL = 10
