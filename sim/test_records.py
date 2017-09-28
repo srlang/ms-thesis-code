@@ -13,8 +13,8 @@ def test_input_PlayedHandRecord():
     # indices:0  1  2  3  4  5  6  7  8
     # agg_ctr:2  3  4  5  6  7  8  9  10
     # refresh:1  0  1  0  0  0  1  0  0
-    gained = [3, 3, 4, 2, 1, 4, 6, 3]#, 4]
-    given  = [2, 4, 3, 4, 6, 1, 2, 3]#, 2]
+    gained = [3, 3, 4, 2, 1, 4, 6, 3, 4]
+    given  = [2, 4, 3, 4, 6, 1, 2, 3, 2]
 
     # insert 1 to make sure it's there at all
     input_PlayedHandRecord(hand, gained=gained[0], given=given[0])
@@ -48,11 +48,13 @@ def test_input_PlayedHandRecord():
         agg_rec = session.query(AggregatePlayedHandRecord).first()
         assert agg_rec.hand() == hand
         PD('agg_rec.__dict__=%s' % str(agg_rec.__dict__), 'test_input__')
-        given_ = given[:6]
+        # N.B.: not entirely sure why 8 is this magic number, but important
+        #       part is that the updating happens at the logarithmic rate
+        given_ = given[:8]
         assert agg_rec.given_min == min(given_)
         assert agg_rec.given_max == max(given_)
         assert agg_rec.given_avg == sum(given_) / len(given_)
-        gained_ = gained[:6]
+        gained_ = gained[:8]
         assert agg_rec.gained_min == min(gained_)
         assert agg_rec.gained_max == max(gained_)
         assert agg_rec.gained_avg == sum(gained_) / len(gained_)
@@ -62,8 +64,39 @@ def test_input_PlayedHandRecord():
         assert False
 
 def test__populate_keep_throw_statistics():
-    assert False
-    pass
+    # ensure created database and wipe table for testing purposes
+    create_tables()
+    session.query(KeepThrowStatistics).delete()
+
+    keep = [0, 1, 2, 3]
+    toss = [5, 6]
+    try:
+        PD('prelim query to ensure empty before population')
+        q = session.query(KeepThrowStatistics).filter_by(\
+                kcard0=keep[0],
+                kcard1=keep[1],
+                kcard2=keep[2],
+                kcard3=keep[3],
+                tcard0=toss[0],
+                tcard1=toss[1])
+        assert q.count() == 0
+        assert _populate_keep_throw_statistics(keep, toss)
+        PD('query again to make sure inserted object is present')
+        q = session.query(KeepThrowStatistics).filter_by(\
+                kcard0=keep[0],
+                kcard1=keep[1],
+                kcard2=keep[2],
+                kcard3=keep[3],
+                tcard0=toss[0],
+                tcard1=toss[1])
+        assert q.count() == 1
+        kts = q.one_or_none()
+        assert kts.kmin == 12
+        assert kts.kmax == 12
+        assert kts.kavg == 12
+    except Exception as e:
+        PD('Error: %s' % str(e))
+        assert False
 
 
 def test_populate_keep_throw_statistics():
