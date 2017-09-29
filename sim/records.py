@@ -12,6 +12,8 @@ from sqlite3                    import  dbapi2 as sqlite
 
 from statistics                 import  mean, median, mode, StatisticsError
 
+from threading                  import  Thread, Lock
+
 
 
 from config                     import  DEBUG,\
@@ -25,7 +27,7 @@ from strategy                   import  _enumerate_possible_hand_values,\
                                         _enumerate_possible_toss_values
 from utils                      import  PD
 
-engine = create_engine(DB_ENGINE, echo=DB_ECHO, module=sqlite)
+engine = create_engine(DB_ENGINE, echo=DB_ECHO, module=sqlite) #, poolclass=QueuePool)
 Base = declarative_base()
 Session = sessionmaker(bind=engine)
 session = Session()
@@ -299,6 +301,140 @@ class KeepThrowStatistics(Base):
     tavg = Column(Float)
     tmod = Column(Integer)
 
+def populator_process_method(dealt_hand):
+    # Times:
+    #   pypy3:
+    #       4 Threads:
+    #           1:54.82
+    #           1:44.16
+    #           1:44.99
+    #           1:40.45
+    #       8 Threads: avg:
+    #           1:37.73
+    #           1:33.88
+    #           1:39.73
+    #       16 Threads:
+    #           1:39.66
+    #           1:37.13
+    #           1:37.62
+    #           1:47.77
+    METHOD = 'populator_process_method(%s)' % str(dealt_hand)
+    #PD('entering', METHOD)
+    eng = create_engine(DB_ENGINE, echo=DB_ECHO, module=sqlite)
+    _Se = sessionmaker(bind=engine)
+    sess = _Se()
+    #total_done = 0
+    #increased = 0
+    #failed = 0
+    for keep in combinations(dealt_hand, 4):
+        k = list(keep)
+        t = [card for card in dealt_hand if card not in k]
+        #total_done += 1
+        try:
+            #if total_done % 10 == 0:
+            #    PD('> working on (k,t)=(%s,%s)' % (str(k),str(t)), METHOD)
+            inc = _populate_keep_throw_statistics(k, t, sess)
+            #inc = True
+            #increased += 1 if inc else 0
+        except Exception as e:
+            pass
+            #PD('> Exception: %s' % str(e), METHOD)
+            #failed += 1
+    #PD('committing transaction')
+    try:
+        sess.commit()
+    except InvalidRequestError:
+        pass
+    except Exception as e:
+        PD('> exception: ' + str(e), METHOD)
+    #PD('exiting', METHOD)
+
+class PopulatorThread(Thread):
+
+    def __init__(self, _id):
+        Thread.__init__(self)
+        self._id = _id
+        self.engine = create_engine(DB_ENGINE, echo=DB_ECHO, module=sqlite)
+        _Session = sessionmaker(bind=engine)
+        self.session = _Session()
+
+    def run(self):
+        METHOD = 'Populator.run(%d)' % self._id
+        PD('Entering', METHOD)
+        increased = 0
+        failed = 0
+        total_done = 0
+        kt = _multithreaded_delegator()
+        while kt is not None:
+            for keep in combinations(kt, 4):
+                k = list(keep)
+                t = [card for card in kt if card not in k]
+                total_done += 1
+                try:
+                    if total_done % 100 == 0:
+                        PD('> working on (k,t)=(%s,%s)' % (str(k),str(t)), METHOD)
+                    inc = _populate_keep_throw_statistics(k, t, self.session)
+                    #inc = True
+                    increased += 1 if inc else 0
+                except Exception as e:
+                    PD('> Exception: %s' % str(e), METHOD)
+                    failed += 1
+            #PD('> getting next dealt hand', METHOD)
+            kt = _multithreaded_delegator()
+        PD('Finished total:%d, increased:%d, failed:%d' % (total_done, increased, failed), METHOD)
+        PD('committing transactions', METHOD)
+        try:
+            self.session.commit()
+        except InvalidRequestError:
+            pass
+        except Exception as e:
+            PD('exception: ' + str(e), METHOD)
+        self.session.close()
+        PD('exiting', METHOD)
+
+
+def populate_keep_throw_statistics_multithreaded(num_threads=8):
+    # Interlude method to get around the issue of speed of database populating
+    PD('entering', 'pop_multi')
+
+    dealt_possibilities = combinations(range(52), 6)
+    if DEBUG:
+        dealt_possibilities = combinations(range(10), 6)
+
+    threads = []
+    for i in range(num_threads):
+        thread = PopulatorThread(i)
+        thread.start()
+        threads.append(thread)
+
+    for thread in threads:
+        thread.join()
+
+    PD('exiting', 'pop_multi')
+    pass
+
+delegator_combinations_lock = Lock()
+delegator_combinations = None
+def _multithreaded_delegator():
+    global delegator_combinations
+    global delegator_combinations_index
+    global delegator_combinations_index_lock
+    METHOD = '_multithreaded_delegator'
+
+    ret = None
+    #PD('> acquiring lock', METHOD)
+    delegator_combinations_lock.acquire()
+    try:
+        ret = delegator_combinations.__next__()
+    except StopIteration:
+        pass
+    #PD('> releasing lock', METHOD)
+    delegator_combinations_lock.release()
+
+    #PD('> exiting with ret=' + str(ret), METHOD)
+    return ret
+
+
 
 def populate_keep_throw_statistics(start_keep=[0, 1, 2, 3], start_throw=[4,5]):
     # Still is a very slow operation
@@ -372,17 +508,21 @@ def populate_keep_throw_statistics(start_keep=[0, 1, 2, 3], start_throw=[4,5]):
         PD('>> failed (%s)' % str(e), 'populate_keep_throw_statistics')
 
 
-def _populate_keep_throw_statistics(keep, throw):
+database_interaction_lock = Lock()
+def _populate_keep_throw_statistics(keep, throw, sess):
     # Populate the individual keep/throw possibility with all statistics
     # as desired.
     # Dumb method. No handling of any exceptions, etc.
-    found_data = session.query(KeepThrowStatistics).filter_by(\
-                    kcard0=keep[0],
-                    kcard1=keep[1],
-                    kcard2=keep[2],
-                    kcard3=keep[3],
-                    tcard0=throw[0],
-                    tcard1=throw[1]).one_or_none()
+    #database_interaction_lock.acquire()
+    with sess.no_autoflush:
+        found_data = sess.query(KeepThrowStatistics).filter_by(\
+                        kcard0=keep[0],
+                        kcard1=keep[1],
+                        kcard2=keep[2],
+                        kcard3=keep[3],
+                        tcard0=throw[0],
+                        tcard1=throw[1]).one_or_none()
+    #database_interaction_lock.release()
     if found_data is None:
         # Calculate statistics and add to database
 
@@ -390,6 +530,13 @@ def _populate_keep_throw_statistics(keep, throw):
         keep_vals = _enumerate_possible_hand_values(keep, throw)
         throw_vals = _enumerate_possible_toss_values(keep, throw)
 
+        add_KeepThrowStatistic(keep, throw, keep_vals, throw_vals, sess)
+        #session.commit()
+        return True
+    else:
+        return False
+
+def add_KeepThrowStatistic(keep, throw, keep_vals, throw_vals, sess):
         # add new row to database
         kmed = median(keep_vals)
         kmod = kmed
@@ -403,6 +550,7 @@ def _populate_keep_throw_statistics(keep, throw):
             tmod = mode(throw_vals)
         except StatisticsError:
             tmod = tmed
+
         to_add = KeepThrowStatistics(
                     # kept cards
                     kcard0=keep[0],
@@ -425,11 +573,9 @@ def _populate_keep_throw_statistics(keep, throw):
                     tavg=mean(throw_vals),
                     tmod=tmod)
 
-        session.add(to_add)
-        #session.commit()
-        return True
-    else:
-        return False
+        #database_interaction_lock.acquire()
+        sess.add(to_add)
+        #database_interaction_lock.release()
 
 class PlayedRoundRecord(Base):
 
@@ -486,8 +632,13 @@ class StrategyRecord(Base):
 
 
 def main_populate():
+    global delegator_combinations
     create_tables()
-    populate_keep_throw_statistics()
+    delegator_combinations = combinations(range(10), 6)
+    #populate_keep_throw_statistics_multithreaded()
+    from multiprocessing import Pool
+    with Pool(processes=4) as pool:
+        pool.map(populator_process_method, delegator_combinations)
 
 if __name__ == '__main__':
     main_populate()
