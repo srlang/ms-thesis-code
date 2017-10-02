@@ -318,6 +318,17 @@ def populator_process_method(dealt_hand):
     #           1:37.13
     #           1:37.62
     #           1:47.77
+    #   Ukko.pypy3:
+    #       16 Threads:
+    #           2:08(ish)
+    #       32 Threads:
+    #           2:07.16
+    #           2:02.46
+    #   Ukko.pypy3, no database interactions
+    #       16 Threads:
+    #           2:07.77
+    #       32 Threads:
+    #           2:00.81
     METHOD = 'populator_process_method(%s)' % str(dealt_hand)
     #PD('entering', METHOD)
     eng = create_engine(DB_ENGINE, echo=DB_ECHO, module=sqlite)
