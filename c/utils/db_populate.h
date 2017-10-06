@@ -19,7 +19,7 @@ typedef struct keep_toss_s {
 } KeepToss;
 #define KT_LAST_FIRST_CARD				(51-2-4)
 
-typedef struct KeepTossInformation {
+typedef struct KeepTossInformation_s {
 	uint8_t kmin;
 	uint8_t kmax;
 	uint8_t kmed;
@@ -30,7 +30,7 @@ typedef struct KeepTossInformation {
 	uint8_t tmed;
 	float tavg;
 	float tmod;
-} KT_info_t;
+} KeepTossInfo;
 
 typedef struct kt_threader_args {
 	char * db_filename;
