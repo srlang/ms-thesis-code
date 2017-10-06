@@ -27,11 +27,12 @@ void free_keep_toss(KeepToss * kt) {
  * evaluate each kept hand with a toss card and
  */
 void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
-	// TODO
-	// get an assignment of keep,toss (given)
+	Card ordered[6];
+	KeepTossInfo kti;
 
 	// keep an ordered copy for the sake of using something
-	Card ordered[6];
+	// due to implementation, given hand is in order
+	// even if it wasn't, AN order is all we need
 	memcpy(ordered, kt->hand, 6*sizeof(Card));
 
 	for (int f_i = 0; f_i < 5; f_i++) {
@@ -52,30 +53,23 @@ void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
 				}
 			}
 
-			// TODO: create a struct to hold this info
-
 			// evaluate keep values
 			// TODO
-			uint8_t min, max, mode;
-			float med, avg;
-			keep_values;
 
 			// evaluate toss hands
 			// TODO
 
 			// add to database
-			kt_db_add(TODO);
-			}
+			kt_db_add(db, kt, kti);
 		}
 	}
-
-	// evaluate all possible keep hand values, knowing toss
-	// evaluate all possible toss values, knowing keep
-	// calculate statistics on each
-	// throw data into database
 }
 
+/*
+ * Print the output of a keep/toss combination in a nice format.
+ */
 void kt_output(KeepToss * kt) {
+	// TODO
 }
 
 #define DB_FLAGS			SQLITE_OPEN_NOMUTEX
@@ -93,20 +87,20 @@ void * kt_threader(void * args) {
 	PD("\topening database connection\n");
 	sqlite3_open_v2(targs->db_filename, &db, DB_FLAGS, NULL);
 
-	while ((kt = next_keep_toss()) != NULL) {
+	while ((kt = kt_next(kt))) {
 		PD("\thave a non-NULL hand\n");
 		if (valid_keep_toss(kt)) {
-			PD("\thand is valid\n");
-			thread_work_method(kt, db);
+			PD("\t\thand is valid\n");
+			kt_thread_work_method(kt, db);
 		}
 		// don't free because we don't want to waste time reallocating memory,
 		// so there's no freeing/reallocating
-		//PD("\tfreeing hand\n");
-		//free_keep_toss(kt);
 	}
 
 	PD("\tfreeing keep/toss memory before exit\n");
-	free_keep_toss(kt);
+	//honestlly can't remember how safely this is non-null, so double check
+	if (kt) 
+		free_keep_toss(kt);
 
 	PD("\tclosing database connection\n");
 	sqlite3_close(db);
@@ -143,9 +137,9 @@ uint8_t kt_valid(KeepToss * kt) {
  * 	This is usually just kt
  */
 #define CRIBBAGE_HAND_INCREMENT_BASE	52
-static KeepToss * _kt_next_object;
-static pthread_mutex_t * _kt_next_object_lock;
-static uint8_t _kt_next_object_done;
+KeepToss * _kt_next_object;
+pthread_mutex_t * _kt_next_object_lock;
+uint8_t _kt_next_object_done;
 KeepToss * kt_next(KeepToss * kt) {
 	if (!kt) {
 		// allocate memory
@@ -162,7 +156,11 @@ KeepToss * kt_next(KeepToss * kt) {
 	if (_kt_next_object_done) {
 		// exit with NULL if we've gone through all the possibilities so threads
 		// can exit
-		return NULL;
+		// make sure to unlock the mutex and free memory as appropriate
+		pthread_mutex_unlock(_kt_next_object_lock);
+		free_keep_toss(kt);
+		kt = NULL;
+		return kt;
 	}
 
 	// implement integer increment base 52 on KeepToss->keep,toss as a dealt
@@ -181,11 +179,6 @@ KeepToss * kt_next(KeepToss * kt) {
 	// won't ever be touched in those fields
 
 	// quit the "next"-ing when we've gone through all combinations once
-//	uint8_t is_zero = 0;
-//	for (uint8_t i = 0; i < 4; i++) {
-//		is_zero |= _kt_next_object->keep[i];
-//	}
-//	_kt_next_object_done = !is_zero;
 	_kt_next_object_done = (_kt_next_object->keep[0] >= KT_LAST_FIRST_CARD);
 
 	// copy the incremented global hand to the destination memory location
@@ -198,6 +191,14 @@ KeepToss * kt_next(KeepToss * kt) {
 }
 
 
+/*
+ * Execute the SQL statement required to insert a single database row into
+ * the table.
+ * Params:
+ * 	db: sqlite3 database pointer for operations
+ * 	kt: KeepToss object for which cards are kept and tossed
+ * 	kti: All the statistics computed for keep/toss combo
+ */
 #define SQL_FORMAT	\
 	"INSERT INTO keep_throw_stats "\
 	"(kcard0, kcard1, kcard2, kcard3, "\
@@ -208,7 +209,7 @@ KeepToss * kt_next(KeepToss * kt) {
 		"%d, %d, "\
 		"%d, %d, %f, %f, %d, "\
 		"%d, %d, %f, %f, %d);-- "
-uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KT_info_t * kti) {
+uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KeepTossInfo * kti) {
 	int rc;
 	
 	// generate sql statement
@@ -219,27 +220,29 @@ uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KT_info_t * kti) {
 			kti->tmin, kti->tmax, kti->tmed, kti->tavg, kti->tmod);
 
 	// run sql statement in db
-	rc = sqlite3_exec(db, sql, CALLBACK_TODO, 0, &err_msg);
+	rc = sqlite3_exec(db, sql, kt_sqlite_callback, 0, &err_msg);
 
 	return (uint8_t) rc;
+}
+
+
+static int kt_sqlite_callback(void * _x, int argc, char ** argv, char ** _y) {
+	return 0;
 }
 
 int main(void) {
 	PD("initializations\n");
 	pthread_t threads[THREAD_COUNT];
-	global_hand_lock = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
-	//global_hand = (Hand *) calloc(1, sizeof(Hand));
-	global_hand = new_hand();
+
+	// initialize shared objects
+	_kt_next_object_done = 0;
+	_kt_next_object_lock = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
+	_kt_next_object = (KeepToss *) malloc(sizeof(KeepToss));
 
 	// initialize mutex lock
-	//PD("creating mutexes\n");
-	pthread_mutexattr_t mutex_attr;
-	//PD("\tattr_init...\n");
-	//pthread_mutexattr_init(&mutex_attr);
-	//PD("\tmutex_init...");
-	pthread_mutex_init(global_hand_lock, NULL); //&mutex_attr);
-	//PD("done.\n");
+	pthread_mutex_init(_kt_next_object_lock, NULL);
 
+	// create pthreads
 	PD("creating threads\n");
 	for (int i = 0; i < THREAD_COUNT; i++) {
 		if(pthread_create(&threads[i], NULL, threader, NULL)) {
@@ -247,13 +250,16 @@ int main(void) {
 		}
 	}
 
+	// join threads
 	PD("joining threads\n");
-	int retval;
 	for (int i = 0; i < THREAD_COUNT; i++) {
 		pthread_join(threads[i], NULL);
 	}
 
+	// destroy objects/free memory
 	PD("destroying\n");
-	// destroy mutex lock
-	pthread_mutex_destroy(global_hand_lock);
+	free_keep_toss(_kt_next_object);
+	pthread_mutex_destroy(_kt_next_object_lock);
+
+	return 0;
 }
