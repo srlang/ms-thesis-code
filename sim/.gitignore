@@ -1,2 +1,6 @@
 __pycache__/
 .cache/
+
+db_*
+tmp_db.db*
+transfer.tar.gz
