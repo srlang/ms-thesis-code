@@ -54,15 +54,106 @@ void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
 			}
 
 			// evaluate keep values
-			// TODO
+			eval_keep_vals(kt, &kti);
 
 			// evaluate toss hands
-			// TODO
+			eval_toss_vals(kt, &kti);
 
 			// add to database
-			kt_db_add(db, kt, kti);
+			kt_db_add(db, kt, &kti);
 		}
 	}
+}
+
+/*
+ * Evaluate all values possible from the kept cards.
+ * kti:
+ * 	kmax
+ * 	kmin
+ * 	kavg
+ * 	kmod
+ * 	kmed
+ */
+void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
+	// TODO
+	Hand hand;
+	// ensure that the min is set over the course of the loops
+	// otherwise, min will always be 0
+	// 29 is the max possible hand, no need for higher
+	kti->kmin = 29;
+	// need to keep track of values for mode/median
+	Score vals[46];
+	uint8_t v_indx = 0;
+
+	// copy cards to hand
+	// (questions: would it be faster to simply copy values over by myself?)
+	// according to Topi: this will likely get optimized by gcc anyways
+#ifdef CRIBBAGE_MEMCPY
+	memcpy(hand->hand, kt->hand, 4*sizeof(Card));
+#else
+	// but, i'm not going to leave it to chance and code both ways for the
+	// heck of 'quick' switching
+	for (int i = 0; i < 4; i++) {
+		hand->hand[i] = kt->hand[i];
+	}
+#endif
+
+	// run through possible cribs
+	for (uint8_t crib = 0; crib < NUM_CARDS; crib++) {
+		uint8_t valid = 1;
+		// 6 cards to include both keep and toss
+		for (uint8_t i = 0; i < 6; i++) {
+			valid &= (hand->hand[i] != crib);
+		}
+		if (valid) {
+			Score score = score_hand(hand);
+
+			// TODO: do math
+			// max
+			if (score > kti->max)
+				kti->max = score;
+
+			// min
+			// N.B. this must be set to 29 ahead of time
+			if (score < kti->min)
+				kti->min = score;
+
+			// med, mode: just record for later
+			vals[v_indx++] = score;
+
+			// avg
+			kti->kavg += (float) score;
+		}
+	}
+
+	// cleanup
+	kti->kavg /= 46.0; //46 possible cribs, this is constant
+
+	// median
+	KEEP_SORT(vals);
+	kti->kmed = (vals[22] + vals[23]) / 2.0;
+
+	// mode
+	_kt_mode(kti, vals, 46);
+}
+
+/*
+ * N.B.: This method assumes that vals are SORTED. Without that, functionality
+ * won't really happen.
+ *
+ * Basically, this will move forward in the array, then keep a count as long
+ * as the values do not change, keeping a count of that.
+ * Kind of similar to the buckets strategy of counting runs.
+ */
+void inline _kt_mode(KeepTossInfo * kti, Score * vals; int vals_len) {
+	// TODO
+}
+
+/*
+ * Evaluate all possible values for the toss and crib.
+ */
+void eval_toss_vals(KeepToss * kt, KeepTossInfo * kti) {
+	// TODO
 }
 
 /*
