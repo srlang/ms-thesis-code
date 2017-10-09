@@ -17,7 +17,8 @@
 
 typedef int8_t Card;
 typedef struct hand_s {
-	Card * hand;
+	//Card * hand; // original
+	Card hand[5];
 	uint8_t bitmask;
 } Hand;
 #define _HAND_DEALER	0x02
