@@ -7,6 +7,10 @@
 #include "cribbage.h"
 #include "score.h"
 
+#define CRIBBAGE_MEMCPY					1
+#define KEEP_SORT(x)					qsort(x)
+#define TOSS_SORT(x)					qsort(x)
+
 #define THREAD_COUNT					10
 #define CARDS_IN_KEEP_TOSS_MODIFIABLE	(4+2+2)
 #define CARDS_IN_KEEP_TOSS_INCREMENT	(4+2)
@@ -20,14 +24,14 @@ typedef struct keep_toss_s {
 #define KT_LAST_FIRST_CARD				(51-2-4)
 
 typedef struct KeepTossInformation_s {
-	uint8_t kmin;
-	uint8_t kmax;
-	uint8_t kmed;
+	Score kmin;
+	Score kmax;
+	Score kmed;
 	float kavg;
 	float kmod;
-	uint8_t tmin;
-	uint8_t tmax;
-	uint8_t tmed;
+	Score tmin;
+	Score tmax;
+	Score tmed;
 	float tavg;
 	float tmod;
 } KeepTossInfo;
