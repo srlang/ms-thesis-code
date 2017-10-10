@@ -2,7 +2,7 @@
 .PHONY: clean
 
 CC=gcc
-CFLAGS=-Wall --std=c99 -O2
+CFLAGS=-Wall --std=c99 -Ofast
 OBJECTS=$(wildcard *.o)
 
 all: $(OBJECTS) enumerate db_populate
