@@ -651,5 +651,14 @@ def main_populate():
     with Pool(processes=4) as pool:
         pool.map(populator_process_method, delegator_combinations)
 
+def main_create():
+    print('running creation mode only')
+    create_tables()
+    session.commit()
+
 if __name__ == '__main__':
-    main_populate()
+    from sys import argv
+    if '--create' in argv:
+        main_create()
+    else:
+        main_populate()
