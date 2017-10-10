@@ -15,10 +15,11 @@
  * Free the memory taken up by the KeepToss object.
  */
 void free_keep_toss(KeepToss * kt) {
-	free(kt->keep);
-	free(kt->toss);
-	free(kt->tosd);
-	free(kt);
+	//free(kt->keep);
+	//free(kt->toss);
+	//free(kt->tosd);
+	if (kt)
+		free(kt);
 }
 
 /*
@@ -29,7 +30,7 @@ void free_keep_toss(KeepToss * kt) {
  * evaluate each kept hand with a toss card and
  */
 void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
-	PD("\t\t\tentering kt_thread_work_method\n");
+	//PD("\t\t\tentering kt_thread_work_method\n");
 	Card ordered[6];
 	KeepTossInfo kti;
 
@@ -67,15 +68,15 @@ void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
 				}
 			}
 
-			PD("\t\t\t\tevaluating keep values\n");
+			//PD("\t\t\t\tevaluating keep values\n");
 			// evaluate keep values
 			eval_keep_vals(kt, &kti);
 
-			PD("\t\t\t\tevaluating toss values\n");
+			//PD("\t\t\t\tevaluating toss values\n");
 			// evaluate toss hands
 			eval_toss_vals(kt, &kti);
 
-			PD("\t\t\t\tadding hand to the database\n");
+			//PD("\t\t\t\tadding hand to the database\n");
 			// add to database
 			kt_db_add(db, kt, &kti);
 		}
@@ -130,7 +131,7 @@ int compare_scores(const void * a, const void * b) {
  * 	kmed
  */
 void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
-	PD("\t\t\t\t\tentering eval_keep_vals\n");
+	//PD("\t\t\t\t\tentering eval_keep_vals\n");
 	Hand hand;
 	// ensure that the min is set over the course of the loops
 	// otherwise, min will always be 0
@@ -141,7 +142,7 @@ void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
 	Score vals[KT_POSS_KEEP_VAL_CT];
 	uint8_t v_indx = 0;
 
-	PD("\t\t\t\t\tcopying cards to hand...\n");
+	//PD("\t\t\t\t\tcopying cards to hand...\n");
 	// copy cards to hand
 	// (questions: would it be faster to simply copy values over by myself?)
 	// according to Topi: this will likely get optimized by gcc anyways
@@ -154,9 +155,9 @@ void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
 		hand.hand[i] = kt->keep[i];
 	}
 #endif
-	PD("\t\t\t\t\tdone\n");
+	//PD("\t\t\t\t\tdone\n");
 
-	PD("\t\t\t\t\tRunning through possible cribs\n");
+	//PD("\t\t\t\t\tRunning through possible cribs\n");
 	// run through possible cribs
 	for (uint8_t crib = 0; crib < NUM_CARDS; crib++) {
 		uint8_t valid = 1;
@@ -181,7 +182,7 @@ void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
 
 	// because there's a single case of min=max=12, but avg=12.667, double check
 	// that this is not due to incorrect count
-	PD("keep_vals.size = %d\n", v_indx);
+	//PD("keep_vals.size = %d\n", v_indx);
 	// cleanup
 	kti->kavg /= (float) KT_POSS_KEEP_VAL_CT; //46 possible cribs, this is constant
 
@@ -197,9 +198,9 @@ void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
 	// mode
 	_kt_mode(&kti->kmod, vals, 46);
 
-	PD("\t\t\t\t\texiting eval_keep_vals with: "
-			"kmin=%d, kmax=%d, kavg=%f, kmed=%f, kmod=%d\n",
-			kti->kmin, kti->kmax, kti->kavg, kti->kmed, kti->kmod);
+	//PD("\t\t\t\t\texiting eval_keep_vals with: "
+	//		"kmin=%d, kmax=%d, kavg=%f, kmed=%f, kmod=%d\n",
+	//		kti->kmin, kti->kmax, kti->kavg, kti->kmed, kti->kmod);
 }
 
 
@@ -207,8 +208,13 @@ void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
  * Evaluate all possible values for the toss and crib.
  */
 void eval_toss_vals(KeepToss * kt, KeepTossInfo * kti) {
-	PD("\t\t\t\t\tentering eval_toss_vals\n");
+	//PD("\t\t\t\t\tentering eval_toss_vals\n");
 	Hand hand;
+	// set the bitmask to be the crib's hand because it is the crib and the
+	// crib is score just __slightly__ differently enough that it actually
+	// matters
+	// kinda drives one crazy
+	hand.bitmask = _HAND_CRIB;
 	kti->tmin = 29;
 	Score vals[TOSS_POSS_VALS];
 	int v_indx = 0;
@@ -279,9 +285,9 @@ void eval_toss_vals(KeepToss * kt, KeepTossInfo * kti) {
 	// mode
 	_kt_mode(&kti->tmod, vals, TOSS_POSS_VALS);
 
-	PD("\t\t\t\t\texiting eval_toss_vals with: "
-			"tmin=%u, tmax=%u, tavg=%.5f, tmed=%.2f, tmod=%u\n",
-			kti->tmin, kti->tmax, kti->tavg, kti->tmed, kti->tmod);
+	//PD("\t\t\t\t\texiting eval_toss_vals with: "
+	//		"tmin=%u, tmax=%u, tavg=%.5f, tmed=%.2f, tmod=%u\n",
+	//		kti->tmin, kti->tmax, kti->tavg, kti->tmed, kti->tmod);
 }
 
 /*
@@ -301,7 +307,6 @@ uint8_t valid_keep_toss(KeepToss * kt) {
 	return !any_same;
 }
 
-#define DB_FLAGS			SQLITE_OPEN_NOMUTEX
 /*
  * Method called for each thread start.
  * Repeatedly finds the next valid hand and calls the scorer method on it.
@@ -321,13 +326,17 @@ void * kt_threader(void * args) {
 	PD("entering threader\n");
 
 	PD("\topening database connection\n");
-	sqlite3_open_v2(targs->db_filename, &db, DB_FLAGS, NULL);
-	PD("\t\tdatabase opened");
+	sqlite3_open_v2(targs->db_filename, &db, DB_OPEN_FLAGS, NULL);
+	// as of 2017-10-10 18:12
+	// 	this does not open the db, i guess because db==null afterwards
+	// fixed as of 2017-10-10 18:23
+	// 	new error: 5: SQLITE_BUSY (too many concurrent writes, by appearances)
+	PD("\t\tdatabase opened\n");
 
 	while ((kt = kt_next(kt))) {
-		PD("\thave a non-NULL hand\n");
+		//PD("\thave a non-NULL hand\n");
 		if (valid_keep_toss(kt)) {
-			PD("\t\thand is valid\n");
+			//PD("\t\thand is valid\n");
 			kt_thread_work_method(kt, db);
 		}
 		// don't free because we don't want to waste time reallocating memory,
@@ -411,7 +420,7 @@ KeepToss * kt_next(KeepToss * kt) {
 	// hand
 	// take advantage of the fact that C treats memory like a single tape
 	uint8_t carry = 1;
-	for (uint8_t i = CARDS_IN_KEEP_TOSS_INCREMENT; i >= 0 && carry; i--) {
+	for (uint8_t i = CARDS_IN_KEEP_TOSS_INCREMENT-1; i >= 0 && carry; i--) {
 		_kt_next_object->keep[i] += carry;
 		carry = _kt_next_object->keep[i] >= 52;
 		_kt_next_object->keep[i] %= CRIBBAGE_HAND_INCREMENT_BASE;
@@ -424,7 +433,14 @@ KeepToss * kt_next(KeepToss * kt) {
 
 	//PD("\t\tfinding out if we're done next step:\n");
 	// quit the "next"-ing when we've gone through all combinations once
+#ifdef DEBUG
+	// initial keep...: {0, 1, 2, 3} ... {4, 4}
+	// exit after XX * YY possibilities to keep it short and test time taken
+	//_kt_next_object_done = (_kt_next_object->toss[0] >= 5);
+	_kt_next_object_done = (_kt_next_object->keep[3] >= 4);
+#else
 	_kt_next_object_done = (_kt_next_object->keep[0] >= KT_LAST_FIRST_CARD);
+#endif
 	//PD("\t\t\t%d\n", _kt_next_object_done);
 
 	//PD("\t\tCopying over incremented global hand to dst mem loc\n");
@@ -458,6 +474,7 @@ KeepToss * kt_next(KeepToss * kt) {
 		"%d, %d, "\
 		"%d, %d, %f, %f, %d, "\
 		"%d, %d, %f, %f, %d);-- "
+pthread_mutex_t * _kt_db_mutex;
 uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KeepTossInfo * kti) {
 	int rc;
 	char * err_msg;
@@ -469,14 +486,36 @@ uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KeepTossInfo * kti) {
 			kti->kmin, kti->kmax, kti->kmed, kti->kavg, kti->kmod,
 			kti->tmin, kti->tmax, kti->tmed, kti->tavg, kti->tmod);
 
+#ifdef DEBUG
+	//PD("soon-to-be-executed sql: %s\n", sql);
+	//if (!db)
+		//PD("Database is null!!!!\n");
+#endif
+
 	// run sql statement in db
-	rc = sqlite3_exec(db, sql, kt_sqlite_callback, 0, &err_msg);
+	// loop over until it's no longer locked
+	// 	will this cause a lot of locking? IDK, but worth trying
+	// 	yes, yes it does
+	//while ((rc = sqlite3_exec(db, sql, kt_sqlite_callback, NULL, &err_msg)) == 5);
+	pthread_mutex_lock(_kt_db_mutex);
+	rc = sqlite3_exec(db, sql, kt_sqlite_callback, NULL, &err_msg);
+	pthread_mutex_unlock(_kt_db_mutex);
+	//PD("kt_db_add: returned %d\n", rc);
+#ifdef DEBUG
+	if (rc) {
+		//PD("SQL ERROR: %s\n", err_msg);
+	}
+#endif
 
 	return (uint8_t) rc;
 }
 
 
 static int kt_sqlite_callback(void * _x, int argc, char ** argv, char ** _y) {
+	for (int i = 0; i < argc; i++) {
+		printf("%s = %s\n", _y[i], argv[i] ? argv[i] : "NULL");
+	}
+	printf("\n");
 	return 0;
 }
 
@@ -505,9 +544,11 @@ int main(void) {
 	_kt_next_object->toss[0] = 4;
 	_kt_next_object->toss[1] = 4;
 //#endif
+	_kt_db_mutex = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
 
 	// initialize mutex lock
 	pthread_mutex_init(_kt_next_object_lock, NULL);
+	pthread_mutex_init(_kt_db_mutex, NULL);
 
 	// create pthreads
 	PD("creating threads\n");
@@ -529,6 +570,7 @@ int main(void) {
 	if (_kt_next_object)
 		free_keep_toss(_kt_next_object);
 	pthread_mutex_destroy(_kt_next_object_lock);
+	pthread_mutex_destroy(_kt_db_mutex);
 
 	return 0;
 }

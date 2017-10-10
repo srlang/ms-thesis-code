@@ -7,14 +7,17 @@
 #include "cribbage.h"
 #include "score.h"
 
-#define DB_FILENAME						"file:///tmp_db_c.db"
+#define DB_FILENAME						"file:tmp_db_c.db"
+#define DB_OPEN_FLAGS					(SQLITE_OPEN_READWRITE |\
+										SQLITE_OPEN_CREATE |\
+										SQLITE_OPEN_FULLMUTEX)
 
 #define CRIBBAGE_MEMCPY					1
 #define KEEP_SORT(w,x,y,z)				qsort(w,x,y,z)
 #define TOSS_SORT(w,x,y,z)				qsort(w,x,y,z)
 
 #ifdef DEBUG
-	#define DB_THREAD_COUNT				1
+	#define DB_THREAD_COUNT				10
 #else
 	#define DB_THREAD_COUNT				10
 #endif
@@ -32,7 +35,11 @@ typedef struct keep_toss_s {
 	Card tosd[2];
 	Card cut;
 } KeepToss;
-#define KT_LAST_FIRST_CARD				(51-2-4)
+#ifdef DEBUG
+	#define KT_LAST_FIRST_CARD				1
+#else
+	#define KT_LAST_FIRST_CARD				(51-2-4)
+#endif
 
 typedef struct KeepTossInformation_s {
 	Score kmin;
