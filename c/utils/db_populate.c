@@ -29,6 +29,7 @@ void free_keep_toss(KeepToss * kt) {
  * evaluate each kept hand with a toss card and
  */
 void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
+	PD("\t\t\tentering kt_thread_work_method\n");
 	Card ordered[6];
 	KeepTossInfo kti;
 
@@ -55,21 +56,26 @@ void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
 			// j index location of where to put the card
 			for (int i = 0, j = 0; i < 6; i++) {
 				if (i == f_i) {
-					kt->keep[4] = ordered[i];
+					//kt->keep[4] = ordered[i];
+					kt->toss[0] = ordered[i];
 				} else if (i == s_i) {
-					kt->keep[5] = ordered[i];
+					//kt->keep[5] = ordered[i];
+					kt->toss[1] = ordered[i];
 				} else {
 					kt->keep[j] = ordered[i];
 					j++;
 				}
 			}
 
+			PD("\t\t\t\tevaluating keep values\n");
 			// evaluate keep values
 			eval_keep_vals(kt, &kti);
 
+			PD("\t\t\t\tevaluating toss values\n");
 			// evaluate toss hands
 			eval_toss_vals(kt, &kti);
 
+			PD("\t\t\t\tadding hand to the database\n");
 			// add to database
 			kt_db_add(db, kt, &kti);
 		}
@@ -109,8 +115,9 @@ void inline _kt_mode(Score * mode, Score * vals, int vals_len) {
 	}
 }
 
-int compare_doubles(const void * a, const void * b) {
-	return (int) ( *((double *)a) - *((double *)b) );
+int compare_scores(const void * a, const void * b) {
+	//return (int) ( *((Score *)a) - *((Score *)b) );
+	return *((Score *) a) - *((Score *) b);
 }
 
 /*
@@ -123,15 +130,18 @@ int compare_doubles(const void * a, const void * b) {
  * 	kmed
  */
 void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
+	PD("\t\t\t\t\tentering eval_keep_vals\n");
 	Hand hand;
 	// ensure that the min is set over the course of the loops
 	// otherwise, min will always be 0
 	// 29 is the max possible hand, no need for higher
 	kti->kmin = 29;
 	// need to keep track of values for mode/median
-	Score vals[46];
+#define KT_POSS_KEEP_VAL_CT		46
+	Score vals[KT_POSS_KEEP_VAL_CT];
 	uint8_t v_indx = 0;
 
+	PD("\t\t\t\t\tcopying cards to hand...\n");
 	// copy cards to hand
 	// (questions: would it be faster to simply copy values over by myself?)
 	// according to Topi: this will likely get optimized by gcc anyways
@@ -144,29 +154,38 @@ void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
 		hand.hand[i] = kt->keep[i];
 	}
 #endif
+	PD("\t\t\t\t\tdone\n");
 
+	PD("\t\t\t\t\tRunning through possible cribs\n");
 	// run through possible cribs
 	for (uint8_t crib = 0; crib < NUM_CARDS; crib++) {
 		uint8_t valid = 1;
 		// 6 cards to include both keep and toss
 		for (uint8_t i = 0; i < 6; i++) {
-			valid &= (hand.hand[i] != crib);
+			valid &= (kt->keep[i] != crib);
 		}
 		if (valid) {
+			//PD("\t\t\t\t\tValid crib(%d) found\n", crib);
+			hand.hand[4] = crib;
 			Score s = score(&hand);
+			//PD("\t\t\t\t\t\tscore = %d\n", s);
 
+			//PD("\t\t\t\t\t\tadding to record of values\n");
 			// med, mode: just record for later
 			vals[v_indx++] = s;
 
 			// avg
-			kti->kavg += (float) s;
+			kti->kavg += s;// + 0.0;//(float) s;
 		}
 	}
 
+	// because there's a single case of min=max=12, but avg=12.667, double check
+	// that this is not due to incorrect count
+	PD("keep_vals.size = %d\n", v_indx);
 	// cleanup
-	kti->kavg /= 46.0; //46 possible cribs, this is constant
+	kti->kavg /= (float) KT_POSS_KEEP_VAL_CT; //46 possible cribs, this is constant
 
-	KEEP_SORT(vals, 46, sizeof(Score), compare_doubles);
+	KEEP_SORT(vals, 46, sizeof(Score), compare_scores);
 
 	// min/max
 	kti->kmin = vals[0];
@@ -177,6 +196,10 @@ void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
 
 	// mode
 	_kt_mode(&kti->kmod, vals, 46);
+
+	PD("\t\t\t\t\texiting eval_keep_vals with: "
+			"kmin=%d, kmax=%d, kavg=%f, kmed=%f, kmod=%d\n",
+			kti->kmin, kti->kmax, kti->kavg, kti->kmed, kti->kmod);
 }
 
 
@@ -184,10 +207,11 @@ void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
  * Evaluate all possible values for the toss and crib.
  */
 void eval_toss_vals(KeepToss * kt, KeepTossInfo * kti) {
+	PD("\t\t\t\t\tentering eval_toss_vals\n");
 	Hand hand;
 	kti->tmin = 29;
 	Score vals[TOSS_POSS_VALS];
-	uint8_t v_indx = 0;
+	int v_indx = 0;
 
 	// copy over hand for adjustment later.
 	hand.hand[0] = kt->toss[0];
@@ -227,7 +251,7 @@ void eval_toss_vals(KeepToss * kt, KeepTossInfo * kti) {
 					continue;
 
 				hand.hand[4] = crib;
-				Score s= score(&hand);
+				Score s = score(&hand);
 
 				// med, mode: just record for later
 				vals[v_indx++] = s;
@@ -240,9 +264,10 @@ void eval_toss_vals(KeepToss * kt, KeepTossInfo * kti) {
 
 
 	// cleanup
+	//PD("toss_vals.size = %d\n", v_indx);
 	kti->tavg /= (float) TOSS_POSS_VALS;
 
-	KEEP_SORT(vals, TOSS_POSS_VALS, sizeof(Score), compare_doubles);
+	TOSS_SORT(vals, TOSS_POSS_VALS, sizeof(Score), compare_scores);
 
 	// min/max (have to sort anyways, why waste computation time sorting
 	kti->tmin = vals[0];
@@ -253,6 +278,10 @@ void eval_toss_vals(KeepToss * kt, KeepTossInfo * kti) {
 
 	// mode
 	_kt_mode(&kti->tmod, vals, TOSS_POSS_VALS);
+
+	PD("\t\t\t\t\texiting eval_toss_vals with: "
+			"tmin=%u, tmax=%u, tavg=%.5f, tmed=%.2f, tmod=%u\n",
+			kti->tmin, kti->tmax, kti->tavg, kti->tmed, kti->tmod);
 }
 
 /*
@@ -278,6 +307,13 @@ uint8_t valid_keep_toss(KeepToss * kt) {
  * Repeatedly finds the next valid hand and calls the scorer method on it.
  */
 void * kt_threader(void * args) {
+/*
+#ifdef DEBUG
+	PD("\tentering\n");
+	if (1)
+		return NULL;
+#endif
+*/
 	KeepToss * kt = NULL;
 	sqlite3 * db;
 	kt_threader_args_t * targs = (kt_threader_args_t *) args;
@@ -286,6 +322,7 @@ void * kt_threader(void * args) {
 
 	PD("\topening database connection\n");
 	sqlite3_open_v2(targs->db_filename, &db, DB_FLAGS, NULL);
+	PD("\t\tdatabase opened");
 
 	while ((kt = kt_next(kt))) {
 		PD("\thave a non-NULL hand\n");
@@ -341,19 +378,25 @@ KeepToss * _kt_next_object;
 pthread_mutex_t * _kt_next_object_lock;
 uint8_t _kt_next_object_done;
 KeepToss * kt_next(KeepToss * kt) {
+	//PD("\t\tentering kt_next()\n");
 	if (!kt) {
+		//PD("\t\t\tkt is NULL, allocating\n");
 		// allocate memory
 		kt = (KeepToss *) calloc(1, sizeof(KeepToss));
-		if (!kt)
+		if (!kt) {
+			//PD("\t\t\t\tkt still NULL after calloc, exiting.\n");
 			// exit quick if still not valid (NULL)
 			// better to let single thread die than segfault proc
 			return NULL;
+		}
 	}
 
+	//PD("\t\tLocking mutex to avoid race conditions.\n");
 	// lock mutex to avoid race conditions
 	pthread_mutex_lock(_kt_next_object_lock);
 
 	if (_kt_next_object_done) {
+		//PD("\t\tWe're done, so free memory and exit\n");
 		// exit with NULL if we've gone through all the possibilities so threads
 		// can exit
 		// make sure to unlock the mutex and free memory as appropriate
@@ -363,6 +406,7 @@ KeepToss * kt_next(KeepToss * kt) {
 		return kt;
 	}
 
+	//PD("\t\tincrementing the keep-toss to the next state\n");
 	// implement integer increment base 52 on KeepToss->keep,toss as a dealt
 	// hand
 	// take advantage of the fact that C treats memory like a single tape
@@ -378,15 +422,20 @@ KeepToss * kt_next(KeepToss * kt) {
 	// not necessary since this increment is on the global next object that
 	// won't ever be touched in those fields
 
+	//PD("\t\tfinding out if we're done next step:\n");
 	// quit the "next"-ing when we've gone through all combinations once
 	_kt_next_object_done = (_kt_next_object->keep[0] >= KT_LAST_FIRST_CARD);
+	//PD("\t\t\t%d\n", _kt_next_object_done);
 
+	//PD("\t\tCopying over incremented global hand to dst mem loc\n");
 	// copy the incremented global hand to the destination memory location
 	memcpy(kt, _kt_next_object, sizeof(KeepToss));
 
+	//PD("\t\tUnlocking mutex to avoid race conditions.\n");
 	// unlock mutex to allow next thread access
 	pthread_mutex_unlock(_kt_next_object_lock);
 
+	//PD("\t\texiting\n");
 	return kt;
 }
 
@@ -433,33 +482,52 @@ static int kt_sqlite_callback(void * _x, int argc, char ** argv, char ** _y) {
 
 int main(void) {
 	PD("initializations\n");
-	pthread_t threads[THREAD_COUNT];
+	pthread_t threads[DB_THREAD_COUNT];
+	kt_threader_args_t thread_args = {
+		.db_filename = DB_FILENAME
+	};
 
 	// initialize shared objects
 	_kt_next_object_done = 0;
 	_kt_next_object_lock = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
 	_kt_next_object = (KeepToss *) malloc(sizeof(KeepToss));
+	// initialize to a sane start to avoid a few million invalid object fails
+	//repeat 4 to allow the increment to succeed and not miss 0,1,2,3,4,5
+	//_kt_next_object->keep = (Card[]) {0, 1, 2, 3};
+	//_kt_next_object->toss = (Card[]) {4, 4};
+//#ifdef CRIBBAGE_MEMCPY
+//	memcpy(_kt_next_object->keep, (Card[])({0, 1, 2, 3, 4, 4};), 6*sizeof(Card));
+//#else
+	_kt_next_object->keep[0] = 0;
+	_kt_next_object->keep[1] = 1;
+	_kt_next_object->keep[2] = 2;
+	_kt_next_object->keep[3] = 3;
+	_kt_next_object->toss[0] = 4;
+	_kt_next_object->toss[1] = 4;
+//#endif
 
 	// initialize mutex lock
 	pthread_mutex_init(_kt_next_object_lock, NULL);
 
 	// create pthreads
 	PD("creating threads\n");
-	for (int i = 0; i < THREAD_COUNT; i++) {
-		if(pthread_create(&threads[i], NULL, kt_threader, NULL)) {
+	for (int i = 0; i < DB_THREAD_COUNT; i++) {
+		PD("creating thread %d\n", i);
+		if(pthread_create(&threads[i], NULL, kt_threader, &thread_args)) {
 			PD("\terror occurred in creation\n");
 		}
 	}
 
 	// join threads
 	PD("joining threads\n");
-	for (int i = 0; i < THREAD_COUNT; i++) {
+	for (int i = 0; i < DB_THREAD_COUNT; i++) {
 		pthread_join(threads[i], NULL);
 	}
 
 	// destroy objects/free memory
 	PD("destroying\n");
-	free_keep_toss(_kt_next_object);
+	if (_kt_next_object)
+		free_keep_toss(_kt_next_object);
 	pthread_mutex_destroy(_kt_next_object_lock);
 
 	return 0;

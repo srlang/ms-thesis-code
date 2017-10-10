@@ -7,15 +7,24 @@
 #include "cribbage.h"
 #include "score.h"
 
+#define DB_FILENAME						"file:///tmp_db_c.db"
+
 #define CRIBBAGE_MEMCPY					1
 #define KEEP_SORT(w,x,y,z)				qsort(w,x,y,z)
-#define TOSS_SORT(x)					qsort(x)
+#define TOSS_SORT(w,x,y,z)				qsort(w,x,y,z)
 
-#define THREAD_COUNT					10
+#ifdef DEBUG
+	#define DB_THREAD_COUNT				1
+#else
+	#define DB_THREAD_COUNT				10
+#endif
 #define CARDS_IN_KEEP_TOSS_MODIFIABLE	(4+2+2)
 #define CARDS_IN_KEEP_TOSS_INCREMENT	(4+2)
 
-#define TOSS_POSS_VALS					15180
+//#define TOSS_POSS_VALS					15180
+//explanation of below:
+// I don't know, i just let the program run and print out the last index
+#define TOSS_POSS_VALS					47610
 
 typedef struct keep_toss_s {
 	Card keep[4];
