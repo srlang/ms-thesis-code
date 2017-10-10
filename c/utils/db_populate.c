@@ -446,7 +446,7 @@ int main(void) {
 	// create pthreads
 	PD("creating threads\n");
 	for (int i = 0; i < THREAD_COUNT; i++) {
-		if(pthread_create(&threads[i], NULL, threader, NULL)) {
+		if(pthread_create(&threads[i], NULL, kt_threader, NULL)) {
 			PD("\terror occurred in creation\n");
 		}
 	}
