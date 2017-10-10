@@ -13,8 +13,8 @@ all: $(OBJECTS) enumerate db_populate
 #score.o: score.c score.h
 #	cc -o $@ -c  score.c
 
-db_populate: db_populate.c score.o cribbage.o
-	${CC} ${CFLAGS} -o $@ $^ -lpthread -lsqlite3
+db_populate: db_populate.c score.o cribbage.o db_populate.h
+	${CC} ${CFLAGS} -o $@ db_populate.c score.o cribbage.o -lpthread -lsqlite3
 
 %.o: %.c %.h utils.h
 	${CC} ${CFLAGS} -o $@ -c $<
