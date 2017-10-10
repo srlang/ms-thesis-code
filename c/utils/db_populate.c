@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <sqlite3.h>
 
 #include "enumerate.h"
 #include "cribbage.h"
 #include "score.h"
 #include "utils.h"
+#include "db_populate.h"
 
 
 /*
@@ -33,7 +35,16 @@ void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
 	// keep an ordered copy for the sake of using something
 	// due to implementation, given hand is in order
 	// even if it wasn't, AN order is all we need
-	memcpy(ordered, kt->hand, 6*sizeof(Card));
+#ifdef CRIBBAGE_MEMCPY
+	memcpy(ordered, kt->keep, 6*sizeof(Card));
+#else
+	ordered[0] = kt->keep[0];
+	ordered[1] = kt->keep[1];
+	ordered[2] = kt->keep[2];
+	ordered[3] = kt->keep[3];
+	ordered[4] = kt->keep[4];
+	ordered[5] = kt->keep[5];
+#endif
 
 	for (int f_i = 0; f_i < 5; f_i++) {
 		for (int s_i = f_i+1; s_i < 6; s_i++) {
@@ -44,11 +55,11 @@ void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
 			// j index location of where to put the card
 			for (int i = 0, j = 0; i < 6; i++) {
 				if (i == f_i) {
-					kt->hand[4] = ordered[i];
+					kt->keep[4] = ordered[i];
 				} else if (i == s_i) {
-					kt->hand[5] = ordered[i];
+					kt->keep[5] = ordered[i];
 				} else {
-					kt->hand[j] = ordered[i];
+					kt->keep[j] = ordered[i];
 					j++;
 				}
 			}
@@ -66,6 +77,43 @@ void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
 }
 
 /*
+ * N.B.: This method assumes that vals are SORTED. Without that, functionality
+ * won't really happen.
+ *
+ * Basically, this will move forward in the array, then keep a count as long
+ * as the values do not change, keeping a count of that.
+ * Kind of similar to the buckets strategy of counting runs.
+ *
+ * In the case of a multi-modal distribution, the lowest mode will be returned.
+ */
+void inline _kt_mode(Score * mode, Score * vals, int vals_len) {
+	uint8_t local_counter = 1;
+	uint8_t local_counter_max = 0;
+	for (int i = 1; i < vals_len; i++) {
+		if (vals[i] == vals[i-1]) {
+			// if we're on the same number, increase counter
+			local_counter++;
+		} else {
+			// if we change number, check
+			if (local_counter > local_counter_max) {
+				local_counter_max = local_counter;
+				*mode = vals[i-1];
+			}
+			local_counter = 0;
+		}
+	}
+	// one last check
+	if (local_counter > local_counter_max) {
+		local_counter_max = local_counter;
+		*mode = vals[vals_len-1];
+	}
+}
+
+int compare_doubles(const void * a, const void * b) {
+	return (int) ( *((double *)a) - *((double *)b) );
+}
+
+/*
  * Evaluate all values possible from the kept cards.
  * kti:
  * 	kmax
@@ -75,7 +123,6 @@ void kt_thread_work_method(KeepToss * kt, sqlite3 * db) {
  * 	kmed
  */
 void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
-	// TODO
 	Hand hand;
 	// ensure that the min is set over the course of the loops
 	// otherwise, min will always be 0
@@ -89,12 +136,12 @@ void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
 	// (questions: would it be faster to simply copy values over by myself?)
 	// according to Topi: this will likely get optimized by gcc anyways
 #ifdef CRIBBAGE_MEMCPY
-	memcpy(hand->hand, kt->hand, 4*sizeof(Card));
+	memcpy(hand.hand, kt->keep, 4*sizeof(Card));
 #else
 	// but, i'm not going to leave it to chance and code both ways for the
 	// heck of 'quick' switching
 	for (int i = 0; i < 4; i++) {
-		hand->hand[i] = kt->hand[i];
+		hand.hand[i] = kt->keep[i];
 	}
 #endif
 
@@ -103,57 +150,109 @@ void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti) {
 		uint8_t valid = 1;
 		// 6 cards to include both keep and toss
 		for (uint8_t i = 0; i < 6; i++) {
-			valid &= (hand->hand[i] != crib);
+			valid &= (hand.hand[i] != crib);
 		}
 		if (valid) {
-			Score score = score_hand(hand);
-
-			// TODO: do math
-			// max
-			if (score > kti->max)
-				kti->max = score;
-
-			// min
-			// N.B. this must be set to 29 ahead of time
-			if (score < kti->min)
-				kti->min = score;
+			Score s = score(&hand);
 
 			// med, mode: just record for later
-			vals[v_indx++] = score;
+			vals[v_indx++] = s;
 
 			// avg
-			kti->kavg += (float) score;
+			kti->kavg += (float) s;
 		}
 	}
 
 	// cleanup
 	kti->kavg /= 46.0; //46 possible cribs, this is constant
 
+	KEEP_SORT(vals, 46, sizeof(Score), compare_doubles);
+
+	// min/max
+	kti->kmin = vals[0];
+	kti->kmax = vals[45];
+
 	// median
-	KEEP_SORT(vals);
 	kti->kmed = (vals[22] + vals[23]) / 2.0;
 
 	// mode
-	_kt_mode(kti, vals, 46);
+	_kt_mode(&kti->kmod, vals, 46);
 }
 
-/*
- * N.B.: This method assumes that vals are SORTED. Without that, functionality
- * won't really happen.
- *
- * Basically, this will move forward in the array, then keep a count as long
- * as the values do not change, keeping a count of that.
- * Kind of similar to the buckets strategy of counting runs.
- */
-void inline _kt_mode(KeepTossInfo * kti, Score * vals; int vals_len) {
-	// TODO
-}
 
 /*
  * Evaluate all possible values for the toss and crib.
  */
 void eval_toss_vals(KeepToss * kt, KeepTossInfo * kti) {
-	// TODO
+	Hand hand;
+	kti->tmin = 29;
+	Score vals[TOSS_POSS_VALS];
+	uint8_t v_indx = 0;
+
+	// copy over hand for adjustment later.
+	hand.hand[0] = kt->toss[0];
+	hand.hand[1] = kt->toss[1];
+
+
+	// Loop over possible values for keep/toss
+	// loop through each crib possibility (yet again, integer addition, base 52)
+	for (Card i = 0; i < 51; i++) {
+		uint8_t any_same_i = 0;
+		for (int x = 0; x < 6; x++) {
+			any_same_i |= (i == kt->keep[x]);
+		}
+		// don't continue searching with this number if any are the same
+		if (any_same_i)
+			continue;
+
+		hand.hand[2] = i;
+		for (Card j = i+1; j < 52; j++) {
+			uint8_t any_same_j = 0;
+			for (int y = 0; y < 6; y++) {
+				any_same_j |= (j == kt->keep[y]);
+			}
+			// don't continue searching with this number if any are the same
+			if (any_same_j)
+				continue;
+
+			hand.hand[3] = j;
+			for (Card crib = 0; crib < 52; crib++) {
+				uint8_t any_same_crib = 0;
+				for (int z = 0; z < 6; z++) {
+					any_same_crib |= (crib == kt->keep[z]);
+				}
+
+				// don't continue searching with this number if any are the same
+				if (any_same_crib)
+					continue;
+
+				hand.hand[4] = crib;
+				Score s= score(&hand);
+
+				// med, mode: just record for later
+				vals[v_indx++] = s;
+
+				// avg
+				kti->tavg += (float) s;
+			}
+		}
+	}
+
+
+	// cleanup
+	kti->tavg /= (float) TOSS_POSS_VALS;
+
+	KEEP_SORT(vals, TOSS_POSS_VALS, sizeof(Score), compare_doubles);
+
+	// min/max (have to sort anyways, why waste computation time sorting
+	kti->tmin = vals[0];
+	kti->tmax = vals[TOSS_POSS_VALS-1];
+
+	// median
+	kti->tmed = (vals[(TOSS_POSS_VALS/2)-1] + vals[TOSS_POSS_VALS/2]) / 2.0;
+
+	// mode
+	_kt_mode(&kti->tmod, vals, TOSS_POSS_VALS);
 }
 
 /*
@@ -163,13 +262,23 @@ void kt_output(KeepToss * kt) {
 	// TODO
 }
 
+uint8_t valid_keep_toss(KeepToss * kt) {
+	uint8_t any_same = 0;
+	for (int i = 0; i < 5; i++) {
+		for (int j = i+1; j < 6; j++) {
+			any_same |= kt->keep[i] == kt->keep[j];
+		}
+	}
+	return !any_same;
+}
+
 #define DB_FLAGS			SQLITE_OPEN_NOMUTEX
 /*
  * Method called for each thread start.
  * Repeatedly finds the next valid hand and calls the scorer method on it.
  */
 void * kt_threader(void * args) {
-	KeepToss * kt;
+	KeepToss * kt = NULL;
 	sqlite3 * db;
 	kt_threader_args_t * targs = (kt_threader_args_t *) args;
 
@@ -208,7 +317,7 @@ uint8_t kt_valid(KeepToss * kt) {
 
 	for (uint8_t i = 0; i < CARDS_IN_KEEP_TOSS_MODIFIABLE-1; i++) {
 		for (uint8_t j = i+1; j < CARDS_IN_KEEP_TOSS_MODIFIABLE; j++) {
-			ret &= hand->hand[i] != hand->hand[j];
+			ret &= kt->keep[i] != kt->keep[j];
 		}
 	}
 
@@ -302,6 +411,7 @@ KeepToss * kt_next(KeepToss * kt) {
 		"%d, %d, %f, %f, %d);-- "
 uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KeepTossInfo * kti) {
 	int rc;
+	char * err_msg;
 	
 	// generate sql statement
 	char sql[2048];

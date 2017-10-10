@@ -2,16 +2,19 @@
 .PHONY: clean
 
 CC=gcc
-CFLAGS=-Wall --std=c99
+CFLAGS=-Wall --std=c99 -O3
 OBJECTS=$(wildcard *.o)
 
-all: $(OBJECTS) enumerate
+all: $(OBJECTS) enumerate db_populator
 
 #cribbage.o: cribbage.c cribbage.h
 #	cc -o $@ -c $<
 #
 #score.o: score.c score.h
 #	cc -o $@ -c  score.c
+
+db_populator: db_populate.c db_populate.h *.o
+	${CC} ${CFLAGS} -o $@ -c $< -lpthread -lsqlite3
 
 %.o: %.c %.h utils.h
 	${CC} ${CFLAGS} -o $@ -c $<

@@ -1,5 +1,5 @@
-#ifndef _ENUMERATE_H
-#define _ENUMERATE_H
+#ifndef _DB_POPULATE_H
+#define _DB_POPULATE_H
 
 #include <pthread.h>
 #include <sqlite3.h>
@@ -8,12 +8,14 @@
 #include "score.h"
 
 #define CRIBBAGE_MEMCPY					1
-#define KEEP_SORT(x)					qsort(x)
+#define KEEP_SORT(w,x,y,z)				qsort(w,x,y,z)
 #define TOSS_SORT(x)					qsort(x)
 
 #define THREAD_COUNT					10
 #define CARDS_IN_KEEP_TOSS_MODIFIABLE	(4+2+2)
 #define CARDS_IN_KEEP_TOSS_INCREMENT	(4+2)
+
+#define TOSS_POSS_VALS					15180
 
 typedef struct keep_toss_s {
 	Card keep[4];
@@ -26,14 +28,14 @@ typedef struct keep_toss_s {
 typedef struct KeepTossInformation_s {
 	Score kmin;
 	Score kmax;
-	Score kmed;
+	float kmed;
 	float kavg;
-	float kmod;
+	Score kmod;
 	Score tmin;
 	Score tmax;
-	Score tmed;
+	float tmed;
 	float tavg;
-	float tmod;
+	Score tmod;
 } KeepTossInfo;
 
 typedef struct kt_threader_args {
@@ -42,7 +44,11 @@ typedef struct kt_threader_args {
 
 void free_keep_toss(KeepToss * kt);
 
-void kt_thread_work_method(KeepToss * kt);
+void kt_thread_work_method(KeepToss * kt, sqlite3 * db);
+
+void eval_keep_vals(KeepToss * kt, KeepTossInfo * kti);
+
+void eval_toss_vals(KeepToss * kt, KeepTossInfo * kti);
 
 void kt_output(KeepToss * kt);
 
@@ -54,6 +60,8 @@ KeepToss * kt_next(KeepToss * kt);
 
 uint8_t kt_valid_next_kt(KeepToss * kt);
 
-int kt_db_add(KeepToss * kt, sqlite3 * db, pthread_mutex_t * mutex);
+uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KeepTossInfo * kti);
 
-#endif /*_ENUMERATE_H*/
+static int kt_sqlite_callback(void * _x, int argc, char ** argv, char ** _y);
+
+#endif /*_DB_POPULATE_H*/

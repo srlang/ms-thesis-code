@@ -174,7 +174,7 @@ int main(void) {
 
 	// initialize mutex lock
 	//PD("creating mutexes\n");
-	pthread_mutexattr_t mutex_attr;
+	//pthread_mutexattr_t mutex_attr;
 	//PD("\tattr_init...\n");
 	//pthread_mutexattr_init(&mutex_attr);
 	//PD("\tmutex_init...");
@@ -189,7 +189,7 @@ int main(void) {
 	}
 
 	PD("joining threads\n");
-	int retval;
+	//int retval;
 	for (int i = 0; i < THREAD_COUNT; i++) {
 		pthread_join(threads[i], NULL);
 	}

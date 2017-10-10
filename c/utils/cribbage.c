@@ -13,14 +13,15 @@ extern uint8_t is_crib_hand(Hand * hand) {
 extern Hand * new_hand() {
 	Hand * ret = (Hand *) calloc(1, sizeof(Hand));
 
-	Card * hand = (Card *) calloc(CARDS_IN_COUNT, sizeof(Card));
-	ret->hand = hand;
+	//Card * hand = (Card *) calloc(CARDS_IN_COUNT, sizeof(Card));
+	//ret->hand = hand;
+	//ret.hand = hand;
 
 	return ret;
 }
 
 extern void free_hand(Hand * hand) {
-	free(hand->hand);
+	//free(hand->hand);
 	free(hand);
 }
 
