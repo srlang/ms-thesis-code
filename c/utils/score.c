@@ -33,7 +33,7 @@ Score fifteens(Hand * hand) {
 		}
 	}
 
-	PD("fifteens: count: %u\n", arr[15]);
+	//PD("fifteens: count: %u\n", arr[15]);
 	return SCORE_FIFTEENS * arr[15];
 }
 
@@ -46,7 +46,7 @@ Score pairs(Hand * hand) {
 				pairs++;
 		}
 	}
-	PD("pairs: count: %u\n", pairs);
+	//PD("pairs: count: %u\n", pairs);
 	return (Score) (pairs * SCORE_PAIRS);
 }
 
@@ -65,11 +65,11 @@ Score runs(Hand * hand) {
 		buckets[type(hand->hand[i])]++;
 	}
 	#ifdef DEBUG
-	PD("score: buckets = [");
+	//PD("score: buckets = [");
 	for (int i = 0; i < NUM_TYPES-1; i++) {
-		PD("%u, ", buckets[i]);
+		//PD("%u, ", buckets[i]);
 	}
-	PD("%u]\n", buckets[NUM_TYPES-1]);
+	//PD("%u]\n", buckets[NUM_TYPES-1]);
 	#endif
 
 	for (uint8_t i = 0; i < NUM_TYPES; i++) {
@@ -87,7 +87,7 @@ Score runs(Hand * hand) {
 			runs_score += local_run * prod;
 	}
 
-	PD("runs: score: %u\n", runs_score);
+	//PD("runs: score: %u\n", runs_score);
 	return runs_score;
 }
 
@@ -101,7 +101,7 @@ Score right_jack(Hand * hand) {
 			break;
 		}
 	}
-	PD("right_jack: %u\n", ret);
+	//PD("right_jack: %u\n", ret);
 	return ret;
 }
 
@@ -115,13 +115,13 @@ Score flush(Hand * hand) {
 	}
 
 	if (is_dealers_hand(hand) && of_same_suit == 5) {
-		PD("flush: returning %u\n", of_same_suit);
+		//PD("flush: returning %u\n", of_same_suit);
 		return of_same_suit;
 	} else if (of_same_suit >= 4) {
-		PD("flush: returning %u\n", of_same_suit);
+		//PD("flush: returning %u\n", of_same_suit);
 		return of_same_suit;
 	} else {
-		PD("flush: returning %u\n", 0);
+		//PD("flush: returning %u\n", 0);
 		return 0;
 	}
 }
