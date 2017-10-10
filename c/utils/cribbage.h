@@ -28,7 +28,8 @@ extern uint8_t is_crib_hand(Hand * hand);
 extern Hand * new_hand();
 extern void free_hand(Hand * hand);
 
-typedef int8_t Score;
+typedef uint8_t Score;
+//typedef int Score;
 
 typedef enum {
 	Clubs = 0,
