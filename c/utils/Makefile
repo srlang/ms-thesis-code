@@ -27,3 +27,7 @@ clean:
 	@test -f db_populate && rm -v db_populate
 	@rm -v  *.o
 
+tar: c_populator.tar.gz
+
+c_populator.tar.gz: *.c *.h Makefile tmp_db_c.db.empty
+	tar cvzf $@ $^
