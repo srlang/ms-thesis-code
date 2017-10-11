@@ -1,4 +1,6 @@
 *.o
-*.swp
+*.db*
 
 enumerate
+db_populate
+c_populator.tar.gz

@@ -1,5 +1,0 @@
-*.o
-*.db*
-
-db_populate
-c_populator.tar.gz
