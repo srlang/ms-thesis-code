@@ -25,6 +25,7 @@ enumerate: enumerate.c enumerate.h score.o cribbage.o utils.h
 clean:
 	@test -f enumerate && rm -v enumerate
 	@test -f db_populate && rm -v db_populate
+	@test -f test_score && rm -v test_score
 	@rm -v  *.o
 
 tar: c_populator.tar.gz
