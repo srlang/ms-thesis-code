@@ -1,3 +1,5 @@
+# Sean R. Lang <sean.lang@cs.helsinki.fi>
+
 from agent import CribbageAgent
 from cribbage import CribbageGame
 

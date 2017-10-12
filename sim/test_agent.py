@@ -1,3 +1,4 @@
+# Sean R. Lang <sean.lang@cs.helsinki.fi>
 
 from agent import CribbageAgent, GoException
 

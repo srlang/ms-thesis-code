@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# Sean R. Lang <sean.lang@cs.helsinki.fi>
+
 from copy import deepcopy
 from random import randint, sample
 

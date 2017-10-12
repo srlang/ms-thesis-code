@@ -1,3 +1,5 @@
+# Sean R. Lang <sean.lang@cs.helsinki.fi>
+
 from cribbage import *
 from cribbage import _trim_zeros, _reset_pegging
 #import cribbage

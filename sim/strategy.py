@@ -1,3 +1,5 @@
+# Sean R. Lang <sean.lang@cs.helsinki.fi>
+
 from itertools  import combinations
 from statistics import median
 
