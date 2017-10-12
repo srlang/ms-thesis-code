@@ -31,3 +31,6 @@ tar: c_populator.tar.gz
 
 c_populator.tar.gz: *.c *.h Makefile tmp_db_c.db.empty
 	tar cvzf $@ $^
+
+test_score: score.c
+	${CC} ${CFLAGS} -o test_score score.c cribbage.o -DMAIN_SCORE
