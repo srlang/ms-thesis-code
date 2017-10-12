@@ -658,6 +658,15 @@ def main_create():
 
 if __name__ == '__main__':
     from sys import argv
+    global engine
+    global Session
+    global session
+    if len(argv) > 1 and argv[1] != '--create':
+        db_file = argv[1]
+        l_engine = DB_ENGINE_PREFIX + db_file
+        engine = create_engine(l_engine, echo=DB_ECHO, module=sqlite)
+        Session = sessionmaker(bind=engine)
+        session = Session()
     if '--create' in argv:
         main_create()
     else:
