@@ -13,10 +13,15 @@ _setup_suc = False
 def db_setup():
     if (not _setup_run) and (not _setup_suc):
         l_succ = False
-        from records import _populate_keep_toss_statistics
-        cards_l = [[0, 1, 2, 3, 4, 5]]
+        from records import _populate_keep_throw_statistics
+        cards_l = [
+                    [0, 1, 2, 3, 4, 5]
+                    ]
         for cards in cards_l:
-            l_succ = l_succ and _populate_keep_toss_statistics(cards)
+            for keep in combinations(cards, 4):
+                k = list(keep)
+                t = [card for card in cards if card not in k]
+                l_succ = l_succ and _populate_keep_throw_statistics(k,t)
         setup_run = True
         setup_suc = l_succ
 
@@ -136,7 +141,7 @@ def test_hand_picker():
                     ((2, 3, 4, 5), (0, 1))]
     assert exp_max_min == hand_picker(cards, 'kmin', max)
     # impractical, but good proof of functionality
-    assert exp_min_min =- hand_picker(cards, 'kmin', min)
+    assert exp_min_min == hand_picker(cards, 'kmin', min)
 
 def test_hand_max_min():
     db_setup()
