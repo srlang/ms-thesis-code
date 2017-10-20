@@ -158,7 +158,7 @@ def input_PlayedHandRecord(cards, gained, given):
                     card0=cards[0],
                     card1=cards[1],
                     card2=cards[2],
-                    card3=cards[3]).one_or_none()
+                    card3=cards[3]).first() #one_or_none()
     except:
         PD('> Aggregate Record not found, need to create', 'input_PlayedHandRecord')
         need_to_add = True
@@ -330,35 +330,35 @@ def populator_process_method(dealt_hand):
     #       32 Threads:
     #           2:00.81
     METHOD = 'populator_process_method(%s)' % str(dealt_hand)
-    #PD('entering', METHOD)
+    PD('entering', METHOD)
     eng = create_engine(DB_ENGINE, echo=DB_ECHO, module=sqlite)
     _Se = sessionmaker(bind=engine)
     sess = _Se()
-    #total_done = 0
-    #increased = 0
-    #failed = 0
+    total_done = 0
+    increased = 0
+    failed = 0
     for keep in combinations(dealt_hand, 4):
         k = list(keep)
         t = [card for card in dealt_hand if card not in k]
-        #total_done += 1
+        total_done += 1
         try:
-            #if total_done % 10 == 0:
-            #    PD('> working on (k,t)=(%s,%s)' % (str(k),str(t)), METHOD)
+            if total_done % 10 == 0:
+                PD('> working on (k,t)=(%s,%s)' % (str(k),str(t)), METHOD)
             inc = _populate_keep_throw_statistics(k, t, sess)
-            #inc = True
-            #increased += 1 if inc else 0
+            inc = True
+            increased += 1 if inc else 0
         except Exception as e:
+            PD('> Exception: %s' % str(e), METHOD)
+            failed += 1
             pass
-            #PD('> Exception: %s' % str(e), METHOD)
-            #failed += 1
-    #PD('committing transaction')
+    PD('committing transaction')
     try:
         sess.commit()
     except InvalidRequestError:
         pass
     except Exception as e:
         PD('> exception: ' + str(e), METHOD)
-    #PD('exiting', METHOD)
+    PD('exiting', METHOD)
 
 class PopulatorThread(Thread):
 
@@ -532,7 +532,7 @@ def _populate_keep_throw_statistics(keep, throw, sess):
                         kcard2=keep[2],
                         kcard3=keep[3],
                         tcard0=throw[0],
-                        tcard1=throw[1]).one_or_none()
+                        tcard1=throw[1]).first() #one_or_none()
     #database_interaction_lock.release()
     if found_data is None:
         # Calculate statistics and add to database
