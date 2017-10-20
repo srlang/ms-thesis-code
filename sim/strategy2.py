@@ -43,11 +43,11 @@ def _retrieve_hand_statistics(kt_tuple, session=session):
             kcard3=k[3],\
             tcard0=t[0],\
             tcard1=t[1])
-    return q.one_or_none()
+    return q.first() #one_or_none()
 
 def possible_KeepThrowStatistics(cards):
     ret = [_retrieve_hand_statistics(kt_t)\
-            for kt_t in possible_keep_toss_tuple_list(cards)]
+            for kt_t in _possible_keep_toss_tuple_list(cards)]
     return [x for x in ret if x is not None]
 
 def _retrieve_property_list(list_kts, prop_name):
@@ -72,7 +72,7 @@ def hand_picker(cards, hand_property, eval_fn):
     kts_ret = _get_by_multiple_indices(kts, p_indices)
     return [_to_keep_toss_tuple(x) for x in kts_ret]
 
-def hand_max_min(card):
+def hand_max_min(cards):
     # Choose the hand(s) with the maximum minimum.
     # i.e. most guaranteed points
     return hand_picker(cards, 'kmin', max)
