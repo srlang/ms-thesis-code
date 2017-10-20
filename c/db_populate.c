@@ -497,13 +497,17 @@ uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KeepTossInfo * kti) {
 	// 	will this cause a lot of locking? IDK, but worth trying
 	// 	yes, yes it does
 	//while ((rc = sqlite3_exec(db, sql, kt_sqlite_callback, NULL, &err_msg)) == 5);
+#ifndef DB_MULTI_FILE
 	pthread_mutex_lock(_kt_db_mutex);
+#endif
 	rc = sqlite3_exec(db, sql, kt_sqlite_callback, NULL, &err_msg);
+#ifndef DB_MULTI_FILE
 	pthread_mutex_unlock(_kt_db_mutex);
+#endif
 	//PD("kt_db_add: returned %d\n", rc);
 #ifdef DEBUG
 	if (rc) {
-		//PD("SQL ERROR: %s\n", err_msg);
+		PD("SQL ERROR: %s\n", err_msg);
 	}
 #endif
 
@@ -522,9 +526,11 @@ static int kt_sqlite_callback(void * _x, int argc, char ** argv, char ** _y) {
 int main(void) {
 	PD("initializations\n");
 	pthread_t threads[DB_THREAD_COUNT];
+#ifndef DB_MULTI_FILE
 	kt_threader_args_t thread_args = {
 		.db_filename = DB_FILENAME
 	};
+#endif
 
 	// initialize shared objects
 	_kt_next_object_done = 0;
@@ -553,10 +559,21 @@ int main(void) {
 	// create pthreads
 	PD("creating threads\n");
 	for (int i = 0; i < DB_THREAD_COUNT; i++) {
+#ifdef DB_MULTI_FILE
+		PD("creating thread arguments for thread %d\n", i);
+		kt_threader_args_t * thread_args =
+			(kt_threader_args_t *) malloc(sizeof(kt_threader_args_t));
+		sprintf(thread_args->db_filename, DB_FILENAME_FORMAT, i);
+		PD("creating thread %d\n", i);
+		if(pthread_create(&threads[i], NULL, kt_threader, thread_args)) {
+			PD("\terror occurred in creation\n");
+		}
+#else
 		PD("creating thread %d\n", i);
 		if(pthread_create(&threads[i], NULL, kt_threader, &thread_args)) {
 			PD("\terror occurred in creation\n");
 		}
+#endif
 	}
 
 	// join threads

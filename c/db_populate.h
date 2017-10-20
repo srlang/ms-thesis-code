@@ -7,7 +7,10 @@
 #include "cribbage.h"
 #include "score.h"
 
+//#define DB_MULTI_FILE	1
+
 #define DB_FILENAME						"file:tmp_db_c.db"
+#define DB_FILENAME_FORMAT				"file:tmp_db_c_%d.db"
 #define DB_OPEN_FLAGS					(SQLITE_OPEN_READWRITE |\
 										SQLITE_OPEN_CREATE |\
 										SQLITE_OPEN_FULLMUTEX)
@@ -55,7 +58,8 @@ typedef struct KeepTossInformation_s {
 } KeepTossInfo;
 
 typedef struct kt_threader_args {
-	char * db_filename;
+	//char * db_filename;
+	char db_filename[100];
 } kt_threader_args_t;
 
 void free_keep_toss(KeepToss * kt);
