@@ -63,6 +63,8 @@ def _to_keep_toss_tuple(kts):
     return ((kts.kcard0, kts.kcard1, kts.kcard2, kts.kcard3), (kts.tcard0, kts.tcard1))
 
 def hand_picker(cards, hand_property, eval_fn):
+    # From a given set of cards, pick the keep/toss combination(s) that have
+    # the desired eval_fn(combo.hand_property)
     kts = possible_KeepThrowStatistics(cards)
     props = _retrieve_property_list(kts, hand_property)
     _prop = eval_fn(props)
@@ -91,16 +93,16 @@ def hand_min_avg_crib(cards):
     # Choose the hand(s) with the minimum average crib
     return hand_picker(cards, 'tavg', min)
 
-def hand_max_avg_both(cards):
-    # Choose the hand(s) with the maximum sum of average crib + average hand
-    kts = possible_KeepThrowStatistics(cards)
-    kavgs = _retrieve_property_list(kts, 'kavg')
-    tavgs = _retrieve_property_list(kts, 'tavg')
-    avgs = [kavgs[i] + tavgs[i] for i in xrange(len(kavgs))]
-    max_avg = max(avgs)
-    p_indcs = _get_all_indices(avgs, max_avg)
-    kts_ret = _get_by_multiple_indices(kts, p_indcs)
-    return [_to_keep_toss_tuple(x) for x in kts_ret]
+#def hand_max_avg_both(cards):
+#    # Choose the hand(s) with the maximum sum of average crib + average hand
+#    kts = possible_KeepThrowStatistics(cards)
+#    kavgs = _retrieve_property_list(kts, 'kavg')
+#    tavgs = _retrieve_property_list(kts, 'tavg')
+#    avgs = [kavgs[i] + tavgs[i] for i in xrange(len(kavgs))]
+#    max_avg = max(avgs)
+#    p_indcs = _get_all_indices(avgs, max_avg)
+#    kts_ret = _get_by_multiple_indices(kts, p_indcs)
+#    return [_to_keep_toss_tuple(x) for x in kts_ret]
 
 def pegging_max_avg_gained(cards):
     # Choose the hand which has gained the maximum average of points for the

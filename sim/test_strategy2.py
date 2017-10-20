@@ -8,6 +8,18 @@ from strategy2 import   _possible_keep_toss_tuple_list,\
                         _get_by_multiple_indices,\
                         _to_keep_toss_tuple
 
+_setup_run = False
+_setup_suc = False
+def db_setup():
+    if (not _setup_run) and (not _setup_suc):
+        l_succ = False
+        from records import _populate_keep_toss_statistics
+        cards_l = [[0, 1, 2, 3, 4, 5]]
+        for cards in cards_l:
+            l_succ = l_succ and _populate_keep_toss_statistics(cards)
+        setup_run = True
+        setup_suc = l_succ
+
 
 def test__possible_keep_toss_tuple_list():
     cards = [0, 1, 2, 3, 4, 5]
@@ -35,6 +47,7 @@ def test__possible_keep_toss_tuple_list():
         assert combo in poss_kt_tl
 
 def test__retrieve_hand_statistics():
+    db_setup()
     keep = (0, 1, 2, 3)
     toss = (4, 5)
     kts = _retrieve_hand_statistics((keep,toss)) #, session=session)
@@ -48,6 +61,23 @@ def test__retrieve_hand_statistics():
 
 def test_possible_KeepThrowStatistics():
     cards = [0, 1, 2, 3, 4, 5]
+    combos = [
+                ((0, 1, 2, 3), (4, 5)),
+                ((0, 1, 2, 4), (3, 5)),
+                ((0, 1, 2, 5), (3, 4)),
+                ((0, 1, 3, 4), (2, 5)),
+                ((0, 1, 3, 5), (2, 4)),
+                ((0, 1, 4, 5), (2, 3)),
+                ((0, 2, 3, 4), (1, 5)),
+                ((0, 2, 3, 5), (1, 4)),
+                ((0, 2, 4, 5), (1, 3)),
+                ((0, 3, 4, 5), (1, 2)),
+                ((1, 2, 3, 4), (0, 5)),
+                ((1, 2, 3, 5), (0, 4)),
+                ((1, 2, 4, 5), (0, 3)),
+                ((1, 3, 4, 5), (0, 2)),
+                ((2, 3, 4, 5), (0, 1))
+                ]
     pass
 
 def test__retrieve_property_list():
@@ -95,37 +125,75 @@ def  test__to_keep_toss_tuple():
     assert _to_keep_toss_tuple(kts) == ((1,2,3,4),(0,5))
 
 def test_hand_picker():
-    assert False
-    pass
+    db_setup()
+    cards = [0, 1, 2, 3, 4, 5]
+    exp_max_min = [((0, 1, 2, 3), (4, 5))]
+    exp_min_min = [((0, 1, 4, 5), (2, 3)),
+                    ((0, 2, 4, 5), (1, 3)),
+                    ((0, 3, 4, 5), (1, 2)),
+                    ((1, 2, 4, 5), (0, 3)),
+                    ((1, 3, 4, 5), (0, 2)),
+                    ((2, 3, 4, 5), (0, 1))]
+    assert exp_max_min == hand_picker(cards, 'kmin', max)
+    # impractical, but good proof of functionality
+    assert exp_min_min =- hand_picker(cards, 'kmin', min)
 
 def test_hand_max_min():
-    assert False
-    pass
+    db_setup()
+    cards = [0, 1, 2, 3, 4, 5]
+    exp_max_min = [((0, 1, 2, 3), (4, 5))]
+    assert exp_max_min == hand_max_min(cards)
 
 def test_hand_max_avg():
-    assert False
-    pass
+    db_setup()
+    cards = [0, 1, 2, 3, 4, 5]
+    exp = [((0, 1, 2, 3), (4, 5))]
+    assert exp == hand_max_avg(cards)
 
 def test_hand_max_med():
-    assert False
-    pass
+    db_setup()
+    cards = [0, 1, 2, 3, 4, 5]
+    exp = [((0, 1, 2, 3), (4, 5))]
+    assert exp == hand_max_med(cards)
 
 def test_hand_max_poss():
-    assert False
-    pass
+    db_setup()
+    cards = [0, 1, 2, 3, 4, 5]
+    exp = [((0, 1, 2, 3), (4, 5))]
+    assert exp == hand_max_poss(cards)
 
 def test_hand_min_avg_crib():
+    db_setup()
+    cards = [0, 1, 2, 3, 4, 5]
+    exp = [((0, 1, 2, 3), (4, 5))]
+    assert exp == hand_min_avg_crib(cards)
+
+#def test_hand_max_avg_both():
+#    db_setup()
+#    cards = [0, 1, 2, 3, 4, 5]
+#    assert False
+#    pass
+
+#
+# How should I handle the pegging methods?
+#   debug database?
+#   prepopulate with non-existant cards?
+#
+def test_pegging_max_avg_gained():
+    db_setup()
+    cards = [0, 1, 2, 3, 4, 5]
     assert False
     pass
 
-def test_hand_max_avg_both():
+def test_pegging_max_med_gained():
+    db_setup()
+    cards = [0, 1, 2, 3, 4, 5]
     assert False
     pass
 
-def test_pegging_max_avg():
+def test_pegging_min_avg_given():
+    db_setup()
+    cards = [0, 1, 2, 3, 4, 5]
     assert False
     pass
 
-def test_pegging_max_med():
-    assert False
-    pass
