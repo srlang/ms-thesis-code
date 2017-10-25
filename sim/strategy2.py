@@ -87,7 +87,7 @@ def hand_max_med(cards):
 
 def hand_max_poss(cards):
     # Choose the hand(s) with the maximum possible score (gambler's strategy)
-    return hand_picker(cards, 'kmin', max)
+    return hand_picker(cards, 'kmax', max)
 
 def hand_min_avg_crib(cards):
     # Choose the hand(s) with the minimum average crib
