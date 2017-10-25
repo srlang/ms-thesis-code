@@ -11,9 +11,13 @@ from strategy2 import   _possible_keep_toss_tuple_list,\
 _setup_run = False
 _setup_suc = False
 def db_setup():
+    global _setup_run
+    global _setup_suc
     if (not _setup_run) and (not _setup_suc):
-        l_succ = False
-        from records import _populate_keep_throw_statistics
+        # populate with basic stuff for the first few cards
+        PD('need to run')
+        l_succ = True 
+        from records import _populate_keep_throw_statistics, session, KeepThrowStatistics
         cards_l = [
                     [0, 1, 2, 3, 4, 5]
                     ]
@@ -21,9 +25,42 @@ def db_setup():
             for keep in combinations(cards, 4):
                 k = list(keep)
                 t = [card for card in cards if card not in k]
-                l_succ = l_succ and _populate_keep_throw_statistics(k,t)
-        setup_run = True
-        setup_suc = l_succ
+                PD('populating keep=%s, toss=%s' % (k,t))
+                try:
+                    #l_succ = l_succ and
+                    _populate_keep_throw_statistics(k,t, session)
+                    session.commit()
+                except Exception as e:
+                    PD('error: %s' % str(e))
+                    l_succ = False
+
+        # populate with non-existant cards so that it can be consistent when
+        # dealing with pegging choices
+        pcards_l = [
+                    [60, 61, 62, 63, 64, 65]
+                    ]
+
+        _setup_run = True
+        l_succ = l_succ and session.query(KeepThrowStatistics).filter_by(\
+                            kcard0=cards_l[0][0],
+                            kcard1=cards_l[0][1],
+                            kcard2=cards_l[0][2],
+                            kcard3=cards_l[0][3],
+                            tcard0=cards_l[0][4],
+                            tcard1=cards_l[0][5]).first() is not None
+        _setup_suc = l_succ
+
+
+
+
+#def test_db_setup():
+#    global _setup_run
+#    global _setup_suc
+#    assert not _setup_run
+#    assert not _setup_suc
+#    db_setup()
+#    assert _setup_run
+#    assert _setup_suc
 
 
 def test__possible_keep_toss_tuple_list():
@@ -170,8 +207,27 @@ def test_hand_max_poss():
 def test_hand_min_avg_crib():
     db_setup()
     cards = [0, 1, 2, 3, 4, 5]
-    exp = [((0, 1, 2, 3), (4, 5))]
-    assert exp == hand_min_avg_crib(cards)
+    #exp = [((0, 1, 2, 3), (4, 5))]
+    #assert exp == hand_min_avg_crib(cards)
+#    exp = [
+#            ((1, 2, 3, 4), (0, 5)),
+#            ((0, 1, 2, 4), (1, 5)),
+#            ((0, 1, 3, 4), (2, 5)),
+#            ((0, 1, 3, 5), (2, 4))
+#            ]
+    exp = [
+            ((0, 1, 2, 4), (3, 5)),
+            ((0, 1, 2, 5), (3, 4)),
+            ((0, 1, 3, 4), (2, 5)),
+            ((0, 1, 3, 5), (2, 4)),
+            ((0, 2, 3, 5), (1, 4)),
+            ((1, 2, 3, 4), (0, 5))
+            ]
+    act = hand_min_avg_crib(cards)
+    for e in exp:
+        assert e in act
+    for a in act:
+        assert a in exp
 
 #def test_hand_max_avg_both():
 #    db_setup()
