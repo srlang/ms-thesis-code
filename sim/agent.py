@@ -2,9 +2,16 @@
 
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
-from copy import deepcopy
+from copy       import deepcopy
 
-from cribbage import score_hand, hand_values, card_value, GoException
+
+#from config     import STRATEGIES, STRATEGY_WEIGHTS
+
+from cribbage   import score_hand, hand_values, card_value, GoException
+
+from strategy3  import hand_evaluator
+STRATEGIES = []
+STRATEGY_WEIGHTS = []
 
 class CribbageAgent(object):
 
@@ -101,7 +108,21 @@ class CribbageAgent(object):
 
 class SmartCribbageAgent(CribbageAgent):
 
+    def __init__(self, strategies, strat_weights):
+        self.strategies = strategies
+        self.strategy_weights = strat_weights
+
     def _choose_cards(self):
+        _METHOD = 'SmartCribbageAgent._choose_cards'
         # using self.cards[0:5]
         # TODO
+        self.cards = sorted(self.cards)
+        PD('sorted cards: %s' % str(self.cards), _METHOD)
+        w,S = hand_evaluator(self.cards, self.strategies, self.strategy_weights)
+        PD('w=%s' % str(w), _METHOD)
+        PD('S=%s' % str(S), _METHOD)
+        p = matmul(w,S)
+        PD('P=%s' % str(p), _METHOD)
+        # TODO
         pass
+
