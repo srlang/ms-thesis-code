@@ -106,9 +106,27 @@ class CribbageAgent(object):
 
     # TODO
 
+'''
+2 possible solutions for how to handle weighting
+
+1. single database row
+    M,O,D, strat1name, strat1weight, strat2name, strat2weight ...
+    can load all fn's into a dict at load,
+    then reference dict lookup later
+
+2. Diff DB tables
+    T1: number and names of strategies, in order
+    T2: M,O,D, strat1weight, strat2weight, ....
+    Can keep a single array of strategies at start time
+
+I like choice 2 better 
+
+'''
+
 class SmartCribbageAgent(CribbageAgent):
 
     def __init__(self, strategies, strat_weights):
+        super(CribbageAgent, self).__init__()
         self.strategies = strategies
         self.strategy_weights = strat_weights
 
@@ -126,3 +144,8 @@ class SmartCribbageAgent(CribbageAgent):
         # TODO
         pass
 
+###class AdaptiveCribbageAgent(SmartCribbageAgent):
+###
+###    def __init__(self):
+###        super(SmartCribbageAgent, self).__init__()
+###
