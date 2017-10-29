@@ -1,20 +1,22 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
-from numpy      import  matmul
+#from numpy      import  matmul
 
 from itertools  import  combinations
 
-from cribage    import  score_hand
+from cribbage   import  score_hand
 
-from records    import  session as records_session
+from records    import  session as records_session,\
+                        AggregatePlayedHandRecord,\
+                        KeepThrowStatistics
 
 from strategy2  import  _possible_keep_toss_tuple_list,\
                         _retrieve_hand_statistics,\
-                        possible_keepThrowStatistics,\
-                        #_retrieve_property_list,\
                         _get_all_indices,\
                         _get_by_multiple_indices,\
                         _to_keep_toss_tuple
+                        #possible_KeepThrowStatistics,\
+                        #_retrieve_property_list,\
 
 from utils      import  PD
 
@@ -34,7 +36,7 @@ from utils      import  PD
 #       where S is the number of strategies
 ###
 
-def _retrieve_property_lists(objs, prop):
+def _retrieve_property_list(objs, prop):
     ''' Retrieve a given property name from a list of objects '''
     return [obj.__dict__[prop] if (obj is not None and prop in obj.__dict__) else None\
             for obj in objs]
@@ -65,14 +67,15 @@ def kts_evaluator(kts, hand_property, min_):
     return scores
 
 def pegging_evaluator(aphrs, prop, min_):
+    # as of now, the other method works for both
     return kts_evaluator(aphrs, prop, min_)
 
 def possible_AggregatePlayedHandRecords(ktts):
     global records_session
     ret = []
 
-    for ktt in ktts:
-        k,t = ktt
+    for k,t in ktts:
+        #k,t = ktt
         retrieved = records_session.query(AggregatePlayedHandRecord).filter_by(\
                         card0=k[0],
                         card1=k[1],
@@ -82,7 +85,23 @@ def possible_AggregatePlayedHandRecords(ktts):
 
     return ret
 
-def hand_evaluator(cards, strategies, strategy_weights):
+def possible_KeepThrowStatistics(ktts):
+    global records_session
+    ret = []
+
+    for k,t in ktts:
+        retrieved = records_session.query(KeepThrowStatistics).filter_by(\
+                        kcard0=k[0],
+                        kcard1=k[1],
+                        kcard2=k[2],
+                        kcard3=k[3],
+                        tcard0=t[0],
+                        tcard1=t[1]).first()
+        ret.append(retrieved)
+
+    return ret
+
+def hand_evaluator(cards, strategies): #, strategy_weights):
     '''
     Evaluate a hand to produce the P vector of probabilities.
 
@@ -90,21 +109,27 @@ def hand_evaluator(cards, strategies, strategy_weights):
         where
             w is the weight vector for all strategies (1 x m)
             S is the (m x n) matrix of each strategy
+        So,
+            P is a (1 x n) matrix
 
-    N.B.: probably will need to use numpy arrays at some point with this
+    Return only the S matrix as w is dependent upon the calling agent and is
+    only needed for the final matrix multiplication.
     '''
-    keep_toss_tuples = _possible_keep_toss_tuples_list(cards)
+    _METHOD = 'hand_evaluator'
+    PD('entering', _METHOD)
+    keep_toss_tuples = _possible_keep_toss_tuple_list(cards)
+    PD('keep_toss_tuples=%s' % str(keep_toss_tuples), _METHOD)
     kts = possible_KeepThrowStatistics(keep_toss_tuples) #TODO: rewrite method to allow Nones
+    PD('kts=%s' % str(kts), _METHOD)
     pinfo = possible_AggregatePlayedHandRecords(keep_toss_tuples)
+    PD('pinfo=%s' % str(pinfo), _METHOD)
 
-    w = strategy_weights
     S = []
     for strategy in strategies:
         S.append(strategy(kts, pinfo))
 
-    P = matmul(w,S)
-
-    return P
+    PD('exiting with S=%s' % str(S), _METHOD)
+    return S
 
 def hand_max_min(kts, pinfo=None):
     # Choose the hand(s) with the maximum minimum.
