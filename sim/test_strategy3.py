@@ -19,8 +19,11 @@ def db_setup():
         PD('need to run')
         l_succ = True 
         cards_l = [
-                    [0, 1, 2, 3, 4, 5],
-                    [60, 61, 62, 63, 64, 65]
+                    [0, 1, 2, 3, 4, 5]#,
+                    #[60, 61, 62, 63, 64, 65]
+                    # cards out of possible range not allowed by some method
+                    #   further in (don't even remember anymore)
+                    #   But, doesn't matter, not possible
                     ]
         for cards in cards_l:
             for keep in combinations(cards, 4):
@@ -83,18 +86,19 @@ def db_setup():
 
 
 
-### Passing as of Oct 27th 15:34
-###def test_db_setup():
-###    #from records import session, KeepThrowStatistics,
-###    global _setup_run
-###    global _setup_suc
-###    assert not _setup_run
-###    assert not _setup_suc
-###    db_setup()
-###    assert _setup_run
-###    assert _setup_suc
-###    assert records_session.query(KeepThrowStatistics).first() is not None
-###    assert records_session.query(AggregatePlayedHandRecord).first() is not None
+#### Passing as of Oct 27th 15:34
+#### Failing as of Oct 29th 17:19
+def test_db_setup():
+    #from records import session, KeepThrowStatistics,
+    global _setup_run
+    global _setup_suc
+    assert not _setup_run
+    assert not _setup_suc
+    db_setup()
+    assert _setup_run
+    assert records_session.query(KeepThrowStatistics).first() is not None
+    assert records_session.query(AggregatePlayedHandRecord).first() is not None
+    assert _setup_suc
 
 def test__retrieve_property_list():
     db_setup()
@@ -153,23 +157,25 @@ def test_possible_AggregatePlayedHandRecords():
         assert ((ar.card0, ar.card1, ar.card2, ar.card3), (0,0)) in ktts
 
 def test_possible_KeepThrowStatistics():
-    # FAILING
     db_setup()
     ktts = [
-            ((60,61,62,63), (64,65)),
-            ((61,62,63,64), (60,65)),
-            ((62,63,64,65), (60,61))
+            ((0, 1, 2, 3), (4, 5)),
+            ((1, 2, 3, 4), (0, 5)),
+            ((2, 3, 4, 5), (0, 1))
             ]
     retrieved = possible_KeepThrowStatistics(ktts)
     assert len(retrieved) == len(ktts)
     for k in retrieved:
         assert k is not None
-        assert ((k.kcard0, k.kcard1, k.kcard2, k.kcard2), (k.tcard0, k.tcard1)) in ktts
+        assert ((k.kcard0, k.kcard1, k.kcard2, k.kcard3), (k.tcard0, k.tcard1)) in ktts
 
 def test_hand_evaluator():
-    # FAILING
     cards = [0, 1, 2, 3, 4, 5]
-    assert [[],[]] == hand_evaluator(cards, [hand_max_min, hand_max_poss])
+    exp = [
+            [1.0, 0.25, 0.25, 0.25, 0.25, 0.0, 0.25, 0.25, 0.0, 0.0, 0.25, 0.25, 0.0, 0.0, 0.0],
+            [0.0, 0.75, 0.75, 0.75, 0.75, 1.0, 0.75, 0.75, 1.0, 1.0, 0.75, 0.75, 1.0, 1.0, 1.0]
+            ]
+    assert exp == hand_evaluator(cards, [hand_max_min, hand_max_poss])
 
 def test_hand_max_min():
     kts = [
