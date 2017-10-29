@@ -166,95 +166,95 @@ def  test__to_keep_toss_tuple():
             tmod=12)
     assert _to_keep_toss_tuple(kts) == ((1,2,3,4),(0,5))
 
-def test_hand_picker():
-    db_setup()
-    cards = [0, 1, 2, 3, 4, 5]
-    exp_max_min = [((0, 1, 2, 3), (4, 5))]
-    exp_min_min = [((0, 1, 4, 5), (2, 3)),
-                    ((0, 2, 4, 5), (1, 3)),
-                    ((0, 3, 4, 5), (1, 2)),
-                    ((1, 2, 4, 5), (0, 3)),
-                    ((1, 3, 4, 5), (0, 2)),
-                    ((2, 3, 4, 5), (0, 1))]
-    assert exp_max_min == hand_picker(cards, 'kmin', max)
-    # impractical, but good proof of functionality
-    assert exp_min_min == hand_picker(cards, 'kmin', min)
-
-def test_hand_max_min():
-    db_setup()
-    cards = [0, 1, 2, 3, 4, 5]
-    exp_max_min = [((0, 1, 2, 3), (4, 5))]
-    assert exp_max_min == hand_max_min(cards)
-
-def test_hand_max_avg():
-    db_setup()
-    cards = [0, 1, 2, 3, 4, 5]
-    exp = [((0, 1, 2, 3), (4, 5))]
-    assert exp == hand_max_avg(cards)
-
-def test_hand_max_med():
-    db_setup()
-    cards = [0, 1, 2, 3, 4, 5]
-    exp = [((0, 1, 2, 3), (4, 5))]
-    assert exp == hand_max_med(cards)
-
-def test_hand_max_poss():
-    db_setup()
-    cards = [0, 1, 2, 3, 4, 5]
-    exp = [((0, 1, 2, 3), (4, 5))]
-    assert exp == hand_max_poss(cards)
-
-def test_hand_min_avg_crib():
-    db_setup()
-    cards = [0, 1, 2, 3, 4, 5]
-    #exp = [((0, 1, 2, 3), (4, 5))]
-    #assert exp == hand_min_avg_crib(cards)
-#    exp = [
-#            ((1, 2, 3, 4), (0, 5)),
-#            ((0, 1, 2, 4), (1, 5)),
-#            ((0, 1, 3, 4), (2, 5)),
-#            ((0, 1, 3, 5), (2, 4))
-#            ]
-    exp = [
-            ((0, 1, 2, 4), (3, 5)),
-            ((0, 1, 2, 5), (3, 4)),
-            ((0, 1, 3, 4), (2, 5)),
-            ((0, 1, 3, 5), (2, 4)),
-            ((0, 2, 3, 5), (1, 4)),
-            ((1, 2, 3, 4), (0, 5))
-            ]
-    act = hand_min_avg_crib(cards)
-    for e in exp:
-        assert e in act
-    for a in act:
-        assert a in exp
-
-#def test_hand_max_avg_both():
-#    db_setup()
-#    cards = [0, 1, 2, 3, 4, 5]
-#    assert False
-#    pass
-
-#
-# How should I handle the pegging methods?
-#   debug database?
-#   prepopulate with non-existant cards?
-#
-def test_pegging_max_avg_gained():
-    db_setup()
-    cards = [0, 1, 2, 3, 4, 5]
-    assert False
-    pass
-
-def test_pegging_max_med_gained():
-    db_setup()
-    cards = [0, 1, 2, 3, 4, 5]
-    assert False
-    pass
-
-def test_pegging_min_avg_given():
-    db_setup()
-    cards = [0, 1, 2, 3, 4, 5]
-    assert False
-    pass
-
+###def test_hand_picker():
+###    db_setup()
+###    cards = [0, 1, 2, 3, 4, 5]
+###    exp_max_min = [((0, 1, 2, 3), (4, 5))]
+###    exp_min_min = [((0, 1, 4, 5), (2, 3)),
+###                    ((0, 2, 4, 5), (1, 3)),
+###                    ((0, 3, 4, 5), (1, 2)),
+###                    ((1, 2, 4, 5), (0, 3)),
+###                    ((1, 3, 4, 5), (0, 2)),
+###                    ((2, 3, 4, 5), (0, 1))]
+###    assert exp_max_min == hand_picker(cards, 'kmin', max)
+###    # impractical, but good proof of functionality
+###    assert exp_min_min == hand_picker(cards, 'kmin', min)
+###
+###def test_hand_max_min():
+###    db_setup()
+###    cards = [0, 1, 2, 3, 4, 5]
+###    exp_max_min = [((0, 1, 2, 3), (4, 5))]
+###    assert exp_max_min == hand_max_min(cards)
+###
+###def test_hand_max_avg():
+###    db_setup()
+###    cards = [0, 1, 2, 3, 4, 5]
+###    exp = [((0, 1, 2, 3), (4, 5))]
+###    assert exp == hand_max_avg(cards)
+###
+###def test_hand_max_med():
+###    db_setup()
+###    cards = [0, 1, 2, 3, 4, 5]
+###    exp = [((0, 1, 2, 3), (4, 5))]
+###    assert exp == hand_max_med(cards)
+###
+###def test_hand_max_poss():
+###    db_setup()
+###    cards = [0, 1, 2, 3, 4, 5]
+###    exp = [((0, 1, 2, 3), (4, 5))]
+###    assert exp == hand_max_poss(cards)
+###
+###def test_hand_min_avg_crib():
+###    db_setup()
+###    cards = [0, 1, 2, 3, 4, 5]
+###    #exp = [((0, 1, 2, 3), (4, 5))]
+###    #assert exp == hand_min_avg_crib(cards)
+####    exp = [
+####            ((1, 2, 3, 4), (0, 5)),
+####            ((0, 1, 2, 4), (1, 5)),
+####            ((0, 1, 3, 4), (2, 5)),
+####            ((0, 1, 3, 5), (2, 4))
+####            ]
+###    exp = [
+###            ((0, 1, 2, 4), (3, 5)),
+###            ((0, 1, 2, 5), (3, 4)),
+###            ((0, 1, 3, 4), (2, 5)),
+###            ((0, 1, 3, 5), (2, 4)),
+###            ((0, 2, 3, 5), (1, 4)),
+###            ((1, 2, 3, 4), (0, 5))
+###            ]
+###    act = hand_min_avg_crib(cards)
+###    for e in exp:
+###        assert e in act
+###    for a in act:
+###        assert a in exp
+###
+####def test_hand_max_avg_both():
+####    db_setup()
+####    cards = [0, 1, 2, 3, 4, 5]
+####    assert False
+####    pass
+###
+####
+#### How should I handle the pegging methods?
+####   debug database?
+####   prepopulate with non-existant cards?
+####
+###def test_pegging_max_avg_gained():
+###    db_setup()
+###    cards = [0, 1, 2, 3, 4, 5]
+###    assert False
+###    pass
+###
+###def test_pegging_max_med_gained():
+###    db_setup()
+###    cards = [0, 1, 2, 3, 4, 5]
+###    assert False
+###    pass
+###
+###def test_pegging_min_avg_given():
+###    db_setup()
+###    cards = [0, 1, 2, 3, 4, 5]
+###    assert False
+###    pass
+###
