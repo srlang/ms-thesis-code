@@ -4,6 +4,8 @@
 
 from copy       import deepcopy
 
+from numpy      import matmul
+
 
 #from config     import STRATEGIES, STRATEGY_WEIGHTS
 
@@ -12,6 +14,8 @@ from cribbage   import score_hand, hand_values, card_value, GoException
 from strategy3  import hand_evaluator
 STRATEGIES = []
 STRATEGY_WEIGHTS = []
+
+from utils      import PD
 
 class CribbageAgent(object):
 
@@ -125,23 +129,30 @@ I like choice 2 better
 
 class SmartCribbageAgent(CribbageAgent):
 
-    def __init__(self, strategies, strat_weights):
+    def __init__(self): #, strategies, strat_weights):
         super(CribbageAgent, self).__init__()
-        self.strategies = strategies
-        self.strategy_weights = strat_weights
+        #self.strategies = strategies
+        #self.strategy_weights = strat_weights
+        self._tmp_p = None
+        self._tmp_S = None
 
     def _choose_cards(self):
+        # Return keep,toss tuple. Do nothing else.
         _METHOD = 'SmartCribbageAgent._choose_cards'
         # using self.cards[0:5]
         # TODO
         self.cards = sorted(self.cards)
         PD('sorted cards: %s' % str(self.cards), _METHOD)
-        w,S = hand_evaluator(self.cards, self.strategies, self.strategy_weights)
-        PD('w=%s' % str(w), _METHOD)
+        #w,
+        S = hand_evaluator(self.cards, self.strategies) #, self.strategy_weights)
+        self._tmp_S = S
+        #PD('w=%s' % str(w), _METHOD)
         PD('S=%s' % str(S), _METHOD)
-        p = matmul(w,S)
+        p = matmul(self.strategy_weights,S)
+        self._tmp_p = p
         PD('P=%s' % str(p), _METHOD)
-        # TODO
+        # ^ works fine
+        # v TODO
         pass
 
 ###class AdaptiveCribbageAgent(SmartCribbageAgent):
