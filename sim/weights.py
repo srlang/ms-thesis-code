@@ -20,11 +20,12 @@ def read_weights(db_sess, my_score, opp_score, dealer, num_weights):
                 my_score=my_score,
                 opp_score=opp_score,
                 dealer=dealer).first()
-    if record is not None:
-        #return [record.__dict__['w%d' % i] for i in range(num_weights)]   
-        return record.weights(num_weights)
-    else:
-        return [0.0] * num_weights
+    return record
+#    if record is not None:
+#        #return [record.__dict__['w%d' % i] for i in range(num_weights)]   
+#        return record.weights(num_weights)
+#    else:
+#        return [0.0] * num_weights
 
 
 class WeightDeclaration(Base):
@@ -81,4 +82,8 @@ class WeightCoordinate(Base):
     def weights(self, num):
         # retrieve the number of weights desired
         return [self.__dict__['w%d' % i] for i in range(num)]
+
+    def to_str(self, num):
+        return ('%d %d %d' % self.my_score, self.opp_score,self.dealer) +\
+                ' '.join([self.__dict__['w%d'%i] for i in range(num)])
 
