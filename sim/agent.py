@@ -2,6 +2,8 @@
 
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
+from sqlachemy.exc  import SQLAlchemyError
+
 from copy       import deepcopy
 
 from numpy      import matmul
@@ -39,6 +41,16 @@ class CribbageAgent(object):
         self._peg_cards_left = []
         # force initialization for _name field for debugging purposes
         self._name = ''
+
+    def reset(self):
+        self.score = 0
+        self.crib = None
+        self._peg_cards_gone = []
+        self._peg_cards_left = []
+        self.hand = []
+        self.is_dealer = False
+        self.is_winner = False
+        #self._name = ''
 
     def choose_cards(self):
         # tested
@@ -135,6 +147,8 @@ class SmartCribbageAgent(CribbageAgent):
         #self.strategy_weights = strat_weights
         self._tmp_p = None
         self._tmp_S = None
+        self.game_weights_path = []
+        self.weights_db_session = None
 
     def _choose_cards(self):
         # Return keep,toss tuple. Do nothing else.
@@ -148,15 +162,72 @@ class SmartCribbageAgent(CribbageAgent):
         self._tmp_S = S
         #PD('w=%s' % str(w), _METHOD)
         PD('S=%s' % str(S), _METHOD)
-        p = matmul(self.strategy_weights,S)
+        num_strategies = len(self._strat_names)
+        # retrieve weights_record from database
+        weights_record = read_weights(self.weights_db_session,
+                                self.score,
+                                self.opponent.score,
+                                num_strategies)
+        if weights_record is None:
+            # insert record for later consideration
+            # initialize to "blank" so each option considered valid
+            # basically, this shouldn't ever be triggered
+            wc = WeightCoordinate(my_score=self.score,
+                    opp_score=self.opponent.score,
+                    dealer=self.is_dealer)
+            for i in range(num_strategies):
+                wc.__dict__['wd%d'%i] = 1.0 / num_strategies
+            try:
+                self.weights_db_session.add(wc)
+                self.weights_db_session.commit()
+            except SQLAlchemyError as sql:
+                pass
+            except Exception as e:
+                pass
+            weights_record = wc
+
+        # keep a record of where we tread
+        self.game_weights_path.append(weights_record)
+
+        weights = weights_record.weights(num_strategies)
+        p = matmul(weights,S)
         self._tmp_p = p
         PD('P=%s' % str(p), _METHOD)
-        # ^ works fine
-        # v TODO
+        # v TODO: HOW DO WE DECIDE?????
         pass
 
-###class AdaptiveCribbageAgent(SmartCribbageAgent):
-###
-###    def __init__(self):
-###        super(SmartCribbageAgent, self).__init__()
-###
+    '''
+    N.B.
+        How are we going to punish/reward?
+        I think we should scale this on score differential
+        Would simply squashing/extending existing differences work?
+            i.e. make the smaller stuff smaller, bigger stuff bigger when
+            things work, opposite when not?
+            potential issue: could easily oscillate on one/few strategy(ies)
+                and never see other strategies
+                Could be okay if simulated annealing or using enough parallel
+                to be able to see different strategies
+                Problem is we're not going to work sim annealing into the
+                training framework (likely)
+                Check back into this after we've read the book a bit more
+    '''
+    def reward(self, other_agent_score):
+        # using self.weight_db_session, self.game_weights_path
+        # TODO
+        pass
+
+    def punish(self, other_agent_score):
+        # using self.weight_db_session, self.game_weights_path
+        # TODO
+        pass
+
+    def save_weights_str(self):
+        header = 'my_score opp_score dealer ' + ' '.join(self._strat_names)
+        weights = self._retrieve_all_weights()
+        return header + '\n'.join([weight.to_str(len(self._strat_names))
+                                    for weight in weights])
+
+    def _retrieve_all_weights(self):
+        all_weights = self._weight_db_session.query(WeightCoordinate)
+        return all_weights
+

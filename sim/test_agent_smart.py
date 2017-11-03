@@ -110,3 +110,15 @@ def test__choose_cards():
     assert exp_p == list(agent._tmp_p)
     assert exp_S == list(agent._tmp_S)
     #assert True
+
+def test_reward():
+    assert False
+
+def test_punish():
+    assert False
+
+def test_save_weights_str():
+    assert False
+
+def test__retrieve_all_weights():
+    assert False
