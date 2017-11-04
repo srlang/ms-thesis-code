@@ -1,4 +1,4 @@
-# Sean R. Lang
+# Sean R. Lang <sean.lang@cs.helsinki.fi>
 
 from strategy2 import   *
 from strategy2 import   _possible_keep_toss_tuple_list,\
