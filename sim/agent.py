@@ -2,11 +2,11 @@
 
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
-from sqlachemy.exc  import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 
-from copy       import deepcopy
+from copy           import deepcopy
 
-from numpy      import matmul
+from numpy          import matmul
 
 
 #from config     import STRATEGIES, STRATEGY_WEIGHTS
