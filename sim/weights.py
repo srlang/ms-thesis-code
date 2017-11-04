@@ -15,7 +15,7 @@ def create_weight_tables(db_engine):
     Base.metadata.create_all(db_engine)
 
 
-def read_weights(db_sess, my_score, opp_score, dealer, num_weights):
+def read_weights(db_sess, my_score, opp_score, dealer): #, num_weights):
     record = db_sess.query(WeightCoordinate).filter_by(\
                 my_score=my_score,
                 opp_score=opp_score,
@@ -84,6 +84,8 @@ class WeightCoordinate(Base):
         return [self.__dict__['w%d' % i] for i in range(num)]
 
     def to_str(self, num):
-        return ('%d %d %d' % self.my_score, self.opp_score,self.dealer) +\
-                ' '.join([self.__dict__['w%d'%i] for i in range(num)])
+        weights_list = [self.__dict__['w%d'%i] for i in range(num)]
+        weights_list_str = ' '.join([str(w) for w in weights_list])
+        coords_str = '%d %d %d ' % (self.my_score, self.opp_score,self.dealer)
+        return coords_str + weights_list_str
 
