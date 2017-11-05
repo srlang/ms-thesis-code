@@ -122,3 +122,6 @@ def test_save_weights_str():
 
 def test__retrieve_all_weights():
     assert False
+
+def test_assigne_strategies():
+    assert False

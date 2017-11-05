@@ -13,9 +13,12 @@ from numpy          import matmul
 
 from cribbage   import score_hand, hand_values, card_value, GoException
 
+import strategy3 as strategy_module
 from strategy3  import hand_evaluator
 STRATEGIES = []
 STRATEGY_WEIGHTS = []
+
+from weights    import WeightCoordinate
 
 from utils      import PD
 
@@ -149,6 +152,12 @@ class SmartCribbageAgent(CribbageAgent):
         self._tmp_S = None
         self.game_weights_path = []
         self.weights_db_session = None
+        self._strat_names = []
+
+    def assign_strategies(self, strats_str_list):
+        self._strat_names = strats_str_list
+        self.strategies = [getattr(strategy_module, strat_name) \
+                                for strat_name in self._strat_names]
 
     def _choose_cards(self):
         # Return keep,toss tuple. Do nothing else.
@@ -222,12 +231,12 @@ class SmartCribbageAgent(CribbageAgent):
         pass
 
     def save_weights_str(self):
-        header = 'my_score opp_score dealer ' + ' '.join(self._strat_names)
+        header_ln = 'my_score opp_score dealer ' + ' '.join(self._strat_names) + '\n'
         weights = self._retrieve_all_weights()
-        return header + '\n'.join([weight.to_str(len(self._strat_names))
+        return header_ln + '\n'.join([weight.to_str(len(self._strat_names))
                                     for weight in weights])
 
     def _retrieve_all_weights(self):
-        all_weights = self._weight_db_session.query(WeightCoordinate)
+        all_weights = self.weights_db_session.query(WeightCoordinate)
         return all_weights
 
