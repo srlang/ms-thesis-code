@@ -21,10 +21,39 @@ def test_play_training_game():
     assert False
 
 def test_create_agent():
-    assert False
+    input_file = './checkpoints/test_input.csv'
+    agent_name = 'TestAgent'
+
+    succ, agent = create_agent(input_file, agent_name)
+
+    assert succ
+    assert agent.name == agent_name
+    assert agent._strat_names == ['hand_max_min', 'hand_max_avg']
+    assert agent.weights_db_session is not None
+    first_weight = agent.weights_db_session.query(WeightCoordinate).first()
+    assert first_weight.dealer
+    assert first_weight.my_score == 10
+    assert first_weight.opp_score == 10
+    assert first_weight.w0 == 0.33
+    assert first_weight.w1 == 0.67
 
 def test_create_agents():
-    assert False
+    input_file = './checkpoints/test_input.csv'
+
+    suc1, suc2, a1, a2 = create_agents(input_file, input_file)
+
+    assert suc1
+    assert suc2
+    assert a1.name == 'agent1'
+    assert a2.name == 'agent2'
+    assert a1._strat_names == ['hand_max_min', 'hand_max_avg']
+    assert a1.weights_db_session is not None
+    first_weight = a1.weights_db_session.query(WeightCoordinate).first()
+    assert first_weight.dealer
+    assert first_weight.my_score == 10
+    assert first_weight.opp_score == 10
+    assert first_weight.w0 == 0.33
+    assert first_weight.w1 == 0.67
 
 def test_save_checkpoint():
     #global dir_permissions
@@ -64,7 +93,7 @@ def test_save_checkpoint():
     assert access(checkpts_dir, dir_permissions)
     assert access(checkpts_dir+'/'+exp_filename, file_permissions)
     # again, manually verify first couple of times
-    assert False # output does not include actual weights
+    #assert False # output does not include actual weights
 
 def test_load_checkpoint():
     # create agent
