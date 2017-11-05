@@ -33,7 +33,7 @@ def test_create_agent():
     first_weight = agent.weights_db_session.query(WeightCoordinate).first()
     assert first_weight.dealer
     assert first_weight.my_score == 10
-    assert first_weight.opp_score == 10
+    assert first_weight.opp_score == 11
     assert first_weight.w0 == 0.33
     assert first_weight.w1 == 0.67
 
@@ -51,7 +51,7 @@ def test_create_agents():
     first_weight = a1.weights_db_session.query(WeightCoordinate).first()
     assert first_weight.dealer
     assert first_weight.my_score == 10
-    assert first_weight.opp_score == 10
+    assert first_weight.opp_score == 11
     assert first_weight.w0 == 0.33
     assert first_weight.w1 == 0.67
 
@@ -64,8 +64,8 @@ def test_save_checkpoint():
     agent.weights_db_session = create_session()
     weights = [
                 WeightCoordinate(my_score=12, opp_score=12, dealer=True, w0=2, w1=3),
-                WeightCoordinate(my_score=12, opp_score=12, dealer=True, w0=1, w1=5),
-                WeightCoordinate(my_score=12, opp_score=12, dealer=True, w0=4, w1=0)
+                WeightCoordinate(my_score=13, opp_score=11, dealer=True, w0=1, w1=5),
+                WeightCoordinate(my_score=14, opp_score=10, dealer=True, w0=4, w1=0)
                 ]
     for w in weights:
         agent.weights_db_session.add(w)
@@ -111,7 +111,7 @@ def test_load_checkpoint():
     first = agent.weights_db_session.query(WeightCoordinate).first() 
     assert first is not None and \
             first.my_score == 10 and\
-            first.opp_score == 10 and\
+            first.opp_score == 11 and\
             first.dealer and\
             first.w0 == 0.33 and\
             first.w1 == 0.67
