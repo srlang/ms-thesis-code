@@ -18,7 +18,7 @@ from strategy3  import hand_evaluator
 STRATEGIES = []
 STRATEGY_WEIGHTS = []
 
-from weights    import WeightCoordinate
+from weights    import WeightCoordinate, read_weights
 
 from utils      import PD
 
@@ -44,6 +44,8 @@ class CribbageAgent(object):
         self._peg_cards_left = []
         # force initialization for _name field for debugging purposes
         self._name = ''
+        self.is_dealer = False
+        self.is_winner = False
 
     def reset(self):
         self.score = 0
@@ -55,16 +57,16 @@ class CribbageAgent(object):
         self.is_winner = False
         #self._name = ''
 
-    def choose_cards(self):
+    def choose_cards(self, **kwargs):
         # tested
-        keep, toss = self._choose_cards()
+        keep, toss = self._choose_cards(**kwargs)
         self.hand = keep
         #self.game.add_to_crib(toss)
         self._peg_cards_left = deepcopy(self.hand)
         self._peg_cards_gone = []
         return keep, toss
 
-    def _choose_cards(self):
+    def _choose_cards(self, **kwargs):
         # default behavior: return (essentially) random 2 cards
         # TODO: incorporate some percentage-based decision making
         #   this will go in SmartCribbageAgent
@@ -145,7 +147,8 @@ I like choice 2 better
 class SmartCribbageAgent(CribbageAgent):
 
     def __init__(self): #, strategies, strat_weights):
-        super(CribbageAgent, self).__init__()
+        CribbageAgent.__init__(self)
+        #super(CribbageAgent, self).__init__()
         #self.strategies = strategies
         #self.strategy_weights = strat_weights
         self._tmp_p = None
@@ -153,13 +156,14 @@ class SmartCribbageAgent(CribbageAgent):
         self.game_weights_path = []
         self.weights_db_session = None
         self._strat_names = []
+        #self.opponent = None
 
     def assign_strategies(self, strats_str_list):
         self._strat_names = strats_str_list
         self.strategies = [getattr(strategy_module, strat_name) \
                                 for strat_name in self._strat_names]
 
-    def _choose_cards(self):
+    def _choose_cards(self, **kwargs):
         # Return keep,toss tuple. Do nothing else.
         _METHOD = 'SmartCribbageAgent._choose_cards'
         # using self.cards[0:5]
@@ -171,21 +175,24 @@ class SmartCribbageAgent(CribbageAgent):
         self._tmp_S = S
         #PD('w=%s' % str(w), _METHOD)
         PD('S=%s' % str(S), _METHOD)
+        PD('_strat_names: %s' % str(self._strat_names), _METHOD)
         num_strategies = len(self._strat_names)
+        PD('num_strategies: %d' % num_strategies, _METHOD)
         # retrieve weights_record from database
         weights_record = read_weights(self.weights_db_session,
                                 self.score,
-                                self.opponent.score,
+                                kwargs['opponent_score'], #self.opponent.score,
                                 num_strategies)
         if weights_record is None:
+            PD('weights_record is None, creating', _METHOD)
             # insert record for later consideration
             # initialize to "blank" so each option considered valid
             # basically, this shouldn't ever be triggered
             wc = WeightCoordinate(my_score=self.score,
-                    opp_score=self.opponent.score,
+                    opp_score=kwargs['opponent_score'], #self.opponent.score,
                     dealer=self.is_dealer)
             for i in range(num_strategies):
-                wc.__dict__['wd%d'%i] = 1.0 / num_strategies
+                wc.__dict__['w%d'%i] = 1.0 / num_strategies
             try:
                 self.weights_db_session.add(wc)
                 self.weights_db_session.commit()
@@ -195,10 +202,13 @@ class SmartCribbageAgent(CribbageAgent):
                 pass
             weights_record = wc
 
+        PD('weights_record=%s' % str(weights_record), _METHOD)
+        PD('weights_record.__dict__ = %s' % str(weights_record.__dict__), _METHOD)
         # keep a record of where we tread
         self.game_weights_path.append(weights_record)
 
         weights = weights_record.weights(num_strategies)
+        PD('weights: %s' % str(weights), _METHOD)
         p = matmul(weights,S)
         self._tmp_p = p
         PD('P=%s' % str(p), _METHOD)

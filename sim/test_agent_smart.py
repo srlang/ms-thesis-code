@@ -12,6 +12,7 @@ from records    import  create_tables,\
                         KeepThrowStatistics,\
                         AggregatePlayedHandRecord
 
+from train      import  create_agent
 from utils      import  PD
 
 _db_setup_run = False
@@ -100,15 +101,24 @@ def test__constructor():
 def test__choose_cards():
     db_setup()
     # single strategy
-    agent = SmartCribbageAgent()
+    input_file = './checkpoints/test_input.csv'
+    b,agent = create_agent(input_file, 'NimiTalla')
+    assert b
+    #agent = SmartCribbageAgent()
     agent.cards = [0, 4, 3, 5, 2, 1]
-    agent.strategies = [hand_max_avg, hand_max_poss]
-    agent.strategy_weights = [0.32, 0.68]
-    agent._choose_cards()
+    #agent.strategies = [hand_max_avg, hand_max_poss]
+    #agent.strategy_weights = [0.32, 0.68]
+    agent.score = 10
+    agent.is_dealer = True
+    agent._choose_cards(opponent_score=11)
     exp_S = [[1.0, 0.15, 0.15, 0.15, 0.15, 0.0, 0.15, 0.15, 0.0, 0.0, 0.15, 0.15, 0.0, 0.0, 0.0], [0.0, 0.75, 0.75, 0.75, 0.75, 1.0, 0.75, 0.75, 1.0, 1.0, 0.75, 0.75, 1.0, 1.0, 1.0]]
     exp_p = [0.32,0.558, 0.558, 0.558, 0.558, 0.68, 0.558, 0.558, 0.68, 0.68, 0.558, 0.558, 0.68, 0.68, 0.68] 
     assert exp_p == list(agent._tmp_p)
     assert exp_S == list(agent._tmp_S)
+    # TODO: big issue with choose_cards. the query for weights is returning a
+    # None object. This is a big problem, because we need it to be using
+    # populated weights
+    #
     #assert True
 
 def test_reward():
