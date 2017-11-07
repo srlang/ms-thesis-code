@@ -31,6 +31,8 @@ def play_training_game(agent1, agent2):
     else:
         agent2.punish(agent1.score)
 
+    return game
+
 def create_agent(start_weights_file, name):
     _METHOD = 'create_agent'
     PD('entering', _METHOD)

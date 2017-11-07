@@ -18,7 +18,22 @@ def create_session():
     # all methods using this work, "test" passed
 
 def test_play_training_game():
-    assert False
+    try:
+        input_file = './checkpoints/test_input.csv'
+        suc1, suc2, a1, a2 = create_agents(input_file, input_file)
+        
+        assert suc1
+        assert suc2
+
+        game = play_training_game(a1, a2)
+        assert game.game_finished
+        if a1.is_winner:
+            assert not a2.is_winner
+        else:
+            assert a2.is_winner
+    except Exception as e:
+        print(str(e))
+        assert False
 
 def test_create_agent():
     input_file = './checkpoints/test_input.csv'
