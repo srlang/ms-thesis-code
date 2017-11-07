@@ -8,7 +8,7 @@ def test_initialization():
 
 def test_choose_cards():
     agent = CribbageAgent()
-    agent.cards = [1, 2, 3, 4, 5, 6]
+    agent.hand = [1, 2, 3, 4, 5, 6]
     keep, toss = agent.choose_cards()
     assert len(keep) == 4 and len(toss) == 2
 

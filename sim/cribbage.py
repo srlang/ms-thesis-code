@@ -248,41 +248,57 @@ class CribbageGame(object):
         pass
 
     def play_full_game(self):
+        _METHOD = 'CribbageGame.play_full_game'
         # 'cut the deck' : determine who will start as dealer
+        PD('assigning dealer...', _METHOD)
         self.assign_dealer()
+        PD('...done', _METHOD)
         # this condition check for backup safety
         while not self.game_finished:
+            PD('> game not finished, starting new round', _METHOD)
             # deal each player cards
+            PD('>> dealing cards', _METHOD)
             self.deal_cards()
 
             # choose cards
-            _,crib1 = self.dealer.choose_cards()
-            _,crib2 = self.pone.choose_cards()
+            PD('>> choosing cards', _METHOD)
+            _,crib1 = self.dealer.choose_cards(opponent_score=self.pone.score)
+            _,crib2 = self.pone.choose_cards(opponent_score=self.dealer.score)
             crib = []
             crib.append(crib1)
             crib.append(crib2)
             self.dealer.crib = crib
 
+            PD('>> checking if cut card is a jack', _METHOD)
             if card_class(self.cut_card) == JACK:
                 self.dealer.score += 2
                 if self.game_finished:
+                    PD('>>> game finished because of a cut jack', _METHOD)
                     self._assign_winner()
                     break
 
             # go through the pegging phase
+            PD('>> pegging...', _METHOD)
             self.peg()
             if self.game_finished:
+                PD('>>> game finished in pegging phase', _METHOD)
                 self._assign_winner()
                 break
+            PD('>> ... done', _METHOD)
 
             # count final card values
+            PD('>> counting...', _METHOD)
             self.count_points()
             if self.game_finished:
+                PD('>>> game finished in counting phase', _METHOD)
                 self._assign_winner()
                 break
+            PD('>> ... done', _METHOD)
 
             # rotate positions
+            PD('>> rotating dealer...', _METHOD)
             self.rotate_dealer()
+            PD('>> ... done', _METHOD)
 
     def peg(self):
         # rule?: do you /have/ to go until 31 if given a go

@@ -15,8 +15,8 @@ from cribbage   import score_hand, hand_values, card_value, GoException
 
 import strategy3 as strategy_module
 from strategy3  import hand_evaluator
-STRATEGIES = []
-STRATEGY_WEIGHTS = []
+#STRATEGIES = []
+#STRATEGY_WEIGHTS = []
 
 from weights    import WeightCoordinate, read_weights
 
@@ -46,6 +46,7 @@ class CribbageAgent(object):
         self._name = ''
         self.is_dealer = False
         self.is_winner = False
+        self.hand = []
 
     def reset(self):
         self.score = 0
@@ -70,7 +71,7 @@ class CribbageAgent(object):
         # default behavior: return (essentially) random 2 cards
         # TODO: incorporate some percentage-based decision making
         #   this will go in SmartCribbageAgent
-        return deepcopy(self.cards[:4]), deepcopy(self.cards[-2:])
+        return deepcopy(self.hand[:4]), deepcopy(self.hand[-2:])
 
     def next_peg_card(self, cards_played, go=False):
         # tested
@@ -100,9 +101,12 @@ class CribbageAgent(object):
             # ensure that only valid cards are used
             valid_cards = [card for card in self._peg_cards_left
                             if card_value(card) <= 31 - sum(hand_values(cards_played))]
-            return valid_cards[0]
+            return self._select_next_valid_peg_card(cards_played, valid_cards) #valid_cards[0]
         except:
             raise GoException
+
+    def _select_next_valid_peg_card(self, cards_played, valid_cards):
+        return valid_cards[0]
 
     def count_points(self, cut_card):
         # tested
@@ -163,15 +167,29 @@ class SmartCribbageAgent(CribbageAgent):
         self.strategies = [getattr(strategy_module, strat_name) \
                                 for strat_name in self._strat_names]
 
+    def _select_next_valid_peg_card(self, cards_played, valid_cards):
+        # TODO: run through some heuristics:
+        # Basic idea for this: greedy choose next card that maximizes next
+        #   possible score
+        # Tie goes to the first card to be found
+        max_score = 0
+        ret_card = valid_cards[0]
+        for card in valid_cards:
+            score = score_peg(cards_played + [card])
+            if score > max_score:
+                max_score = score
+                ret_card = card
+        return ret_card
+
     def _choose_cards(self, **kwargs):
         # Return keep,toss tuple. Do nothing else.
         _METHOD = 'SmartCribbageAgent._choose_cards'
-        # using self.cards[0:5]
+        # using self.hand[0:5]
         # TODO
-        self.cards = sorted(self.cards)
-        PD('sorted cards: %s' % str(self.cards), _METHOD)
+        self.hand= sorted(self.hand)
+        PD('sorted cards: %s' % str(self.hand), _METHOD)
         #w,
-        S = hand_evaluator(self.cards, self.strategies) #, self.strategy_weights)
+        S = hand_evaluator(self.hand, self.strategies) #, self.strategy_weights)
         self._tmp_S = S
         #PD('w=%s' % str(w), _METHOD)
         PD('S=%s' % str(S), _METHOD)
@@ -181,26 +199,44 @@ class SmartCribbageAgent(CribbageAgent):
         # retrieve weights_record from database
         weights_record = read_weights(self.weights_db_session,
                                 self.score,
-                                kwargs['opponent_score'], #self.opponent.score,
-                                num_strategies)
+                                kwargs['opponent_score'],
+                                self.is_dealer)
         if weights_record is None:
-            PD('weights_record is None, creating', _METHOD)
+            PD('weights_record is None, creating with %d weights' % num_strategies, _METHOD)
             # insert record for later consideration
             # initialize to "blank" so each option considered valid
             # basically, this shouldn't ever be triggered
             wc = WeightCoordinate(my_score=self.score,
                     opp_score=kwargs['opponent_score'], #self.opponent.score,
                     dealer=self.is_dealer)
+            PD('created wc=%s' % str(wc), _METHOD)
+            PD('starting wc.__dict__ = %s' % str(wc.__dict__), _METHOD)
             for i in range(num_strategies):
-                wc.__dict__['w%d'%i] = 1.0 / num_strategies
+                PD('assigning wc.w%d = %f' % (i, 1.0/num_strategies), _METHOD)
+                #wc.__dict__['w%d'%i] = 1.0 / num_strategies
+                setattr(wc, 'w%d'%i, 1.0/num_strategies)
+            PD('After loop: wc.__dict__ = %s' % str(wc.__dict__), _METHOD)
+            PD('final wc=%s' % str(wc), _METHOD)
+            PD('final wc.__dict__=%s' % str(wc.__dict__), _METHOD)
+            PD('assigning weights_record to %s' % str(wc), _METHOD)
+            weights_record = wc
             try:
                 self.weights_db_session.add(wc)
                 self.weights_db_session.commit()
             except SQLAlchemyError as sql:
+                PD('sql exception: %s' % str(sql), _METHOD)
                 pass
             except Exception as e:
+                PD('exception: %s' % str(e), _METHOD)
                 pass
-            weights_record = wc
+            weights_record = read_weights(self.weights_db_session,
+                                    self.score,
+                                    kwargs['opponent_score'],
+                                    self.is_dealer)
+            PD('re-queried weights: %s' % str(weights_record), _METHOD)
+            PD('re-queried weights.__dict__: %s' % str(weights_record.__dict__), _METHOD)
+
+            #weights_record = wc
 
         PD('weights_record=%s' % str(weights_record), _METHOD)
         PD('weights_record.__dict__ = %s' % str(weights_record.__dict__), _METHOD)
@@ -213,6 +249,7 @@ class SmartCribbageAgent(CribbageAgent):
         self._tmp_p = p
         PD('P=%s' % str(p), _METHOD)
         # v TODO: HOW DO WE DECIDE?????
+        # TODO: need to decide to be able to test this method and to test training
         pass
 
     '''

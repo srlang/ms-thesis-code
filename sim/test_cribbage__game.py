@@ -13,6 +13,16 @@ def basic_setup():
 def test_nothing():
     assert True
 
+def test_play_full_game():
+    a1,a2,g = basic_setup()
+    g.play_full_game()
+
+    assert g.game_finished
+    if a1.is_winner:
+        assert not a2.is_winner
+    else:
+        assert a2.is_winner
+
 def test___init__():
     agent1, agent2, game = basic_setup()
     assert game.player1 == agent1

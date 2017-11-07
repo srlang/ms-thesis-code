@@ -50,10 +50,12 @@ def kts_evaluator(kts, hand_property, min_):
     # don't do database stuff here, so that access errors don't cause offset issues
     #kts = possible_KeepThrowStatistics(cards)
     scores = _retrieve_property_list(kts, hand_property)
+    scores_num = [score for score in scores if score is not None]
+    scores_num = [0, 1] if scores_num == [] else scores_num
     
     # scale scores to 0.0---1.0
-    max_score = max(scores)
-    min_score = min(scores)
+    max_score = max(scores_num)
+    min_score = min(scores_num)
     diff = max_score - min_score
     scores = [((score - min_score) / diff) if score is not None else 0.5\
                 # 0.5 is necessary to basically ignore for either max or min
