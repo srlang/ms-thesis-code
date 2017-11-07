@@ -158,9 +158,16 @@ class SmartCribbageAgent(CribbageAgent):
         self._tmp_p = None
         self._tmp_S = None
         self.game_weights_path = []
-        self.weights_db_session = None
+        #self.weights_db_session = None
         self._strat_names = []
         #self.opponent = None
+        # self.weights is a 4-d array:
+        #   my-score -> opp_score -> dealer -> weights_list
+        self.weights = [
+                        [
+                            [None for dealer in [0,1]]
+                        ]
+                    ]
 
     def assign_strategies(self, strats_str_list):
         self._strat_names = strats_str_list
@@ -171,7 +178,7 @@ class SmartCribbageAgent(CribbageAgent):
         # TODO: run through some heuristics:
         # Basic idea for this: greedy choose next card that maximizes next
         #   possible score
-        # Tie goes to the first card to be found
+        # Tie goes to the first card to be found with that maximum
         max_score = 0
         ret_card = valid_cards[0]
         for card in valid_cards:
@@ -181,69 +188,79 @@ class SmartCribbageAgent(CribbageAgent):
                 ret_card = card
         return ret_card
 
-    def _choose_cards(self, **kwargs):
+###    def _choose_cards(self, **kwargs):
+###        # Return keep,toss tuple. Do nothing else.
+###        _METHOD = 'SmartCribbageAgent._choose_cards'
+###        # using self.hand[0:5]
+###        # TODO
+###        self.hand= sorted(self.hand)
+###        PD('sorted cards: %s' % str(self.hand), _METHOD)
+###        #w,
+###        S = hand_evaluator(self.hand, self.strategies) #, self.strategy_weights)
+###        self._tmp_S = S
+###        #PD('w=%s' % str(w), _METHOD)
+###        PD('S=%s' % str(S), _METHOD)
+###        PD('_strat_names: %s' % str(self._strat_names), _METHOD)
+###        num_strategies = len(self._strat_names)
+###        PD('num_strategies: %d' % num_strategies, _METHOD)
+###        # retrieve weights_record from database
+###        weights_record = read_weights(self.weights_db_session,
+###                                self.score,
+###                                kwargs['opponent_score'],
+###                                self.is_dealer)
+###        if weights_record is None:
+###            PD('weights_record is None, creating with %d weights' % num_strategies, _METHOD)
+###            # insert record for later consideration
+###            # initialize to "blank" so each option considered valid
+###            # basically, this shouldn't ever be triggered
+###            wc = WeightCoordinate(my_score=self.score,
+###                    opp_score=kwargs['opponent_score'], #self.opponent.score,
+###                    dealer=self.is_dealer)
+###            PD('created wc=%s' % str(wc), _METHOD)
+###            PD('starting wc.__dict__ = %s' % str(wc.__dict__), _METHOD)
+###            for i in range(num_strategies):
+###                PD('assigning wc.w%d = %f' % (i, 1.0/num_strategies), _METHOD)
+###                #wc.__dict__['w%d'%i] = 1.0 / num_strategies
+###                setattr(wc, 'w%d'%i, 1.0/num_strategies)
+###            PD('After loop: wc.__dict__ = %s' % str(wc.__dict__), _METHOD)
+###            PD('final wc=%s' % str(wc), _METHOD)
+###            PD('final wc.__dict__=%s' % str(wc.__dict__), _METHOD)
+###            PD('assigning weights_record to %s' % str(wc), _METHOD)
+###            weights_record = wc
+###            try:
+###                self.weights_db_session.add(wc)
+###                self.weights_db_session.commit()
+###            except SQLAlchemyError as sql:
+###                PD('sql exception: %s' % str(sql), _METHOD)
+###                pass
+###            except Exception as e:
+###                PD('exception: %s' % str(e), _METHOD)
+###                pass
+###            weights_record = read_weights(self.weights_db_session,
+###                                    self.score,
+###                                    kwargs['opponent_score'],
+###                                    self.is_dealer)
+###            PD('re-queried weights: %s' % str(weights_record), _METHOD)
+###            PD('re-queried weights.__dict__: %s' % str(weights_record.__dict__), _METHOD)
+###
+###            #weights_record = wc
+###
+###        PD('weights_record=%s' % str(weights_record), _METHOD)
+###        PD('weights_record.__dict__ = %s' % str(weights_record.__dict__), _METHOD)
+###        # keep a record of where we tread
+###        self.game_weights_path.append(weights_record)
+
+    def _choose_cards(self, opponent_score): #**kwargs):
         # Return keep,toss tuple. Do nothing else.
         _METHOD = 'SmartCribbageAgent._choose_cards'
         # using self.hand[0:5]
         # TODO
-        self.hand= sorted(self.hand)
+        self.hand = sorted(self.hand)
         PD('sorted cards: %s' % str(self.hand), _METHOD)
-        #w,
-        S = hand_evaluator(self.hand, self.strategies) #, self.strategy_weights)
+        S = hand_evaluator(self.hand, self.strategies)
         self._tmp_S = S
-        #PD('w=%s' % str(w), _METHOD)
-        PD('S=%s' % str(S), _METHOD)
-        PD('_strat_names: %s' % str(self._strat_names), _METHOD)
-        num_strategies = len(self._strat_names)
-        PD('num_strategies: %d' % num_strategies, _METHOD)
-        # retrieve weights_record from database
-        weights_record = read_weights(self.weights_db_session,
-                                self.score,
-                                kwargs['opponent_score'],
-                                self.is_dealer)
-        if weights_record is None:
-            PD('weights_record is None, creating with %d weights' % num_strategies, _METHOD)
-            # insert record for later consideration
-            # initialize to "blank" so each option considered valid
-            # basically, this shouldn't ever be triggered
-            wc = WeightCoordinate(my_score=self.score,
-                    opp_score=kwargs['opponent_score'], #self.opponent.score,
-                    dealer=self.is_dealer)
-            PD('created wc=%s' % str(wc), _METHOD)
-            PD('starting wc.__dict__ = %s' % str(wc.__dict__), _METHOD)
-            for i in range(num_strategies):
-                PD('assigning wc.w%d = %f' % (i, 1.0/num_strategies), _METHOD)
-                #wc.__dict__['w%d'%i] = 1.0 / num_strategies
-                setattr(wc, 'w%d'%i, 1.0/num_strategies)
-            PD('After loop: wc.__dict__ = %s' % str(wc.__dict__), _METHOD)
-            PD('final wc=%s' % str(wc), _METHOD)
-            PD('final wc.__dict__=%s' % str(wc.__dict__), _METHOD)
-            PD('assigning weights_record to %s' % str(wc), _METHOD)
-            weights_record = wc
-            try:
-                self.weights_db_session.add(wc)
-                self.weights_db_session.commit()
-            except SQLAlchemyError as sql:
-                PD('sql exception: %s' % str(sql), _METHOD)
-                pass
-            except Exception as e:
-                PD('exception: %s' % str(e), _METHOD)
-                pass
-            weights_record = read_weights(self.weights_db_session,
-                                    self.score,
-                                    kwargs['opponent_score'],
-                                    self.is_dealer)
-            PD('re-queried weights: %s' % str(weights_record), _METHOD)
-            PD('re-queried weights.__dict__: %s' % str(weights_record.__dict__), _METHOD)
-
-            #weights_record = wc
-
-        PD('weights_record=%s' % str(weights_record), _METHOD)
-        PD('weights_record.__dict__ = %s' % str(weights_record.__dict__), _METHOD)
-        # keep a record of where we tread
-        self.game_weights_path.append(weights_record)
-
-        weights = weights_record.weights(num_strategies)
+        #weights = weights_record.weights(num_strategies)
+        weights = self.retrieve_weights(opponent_score)
         PD('weights: %s' % str(weights), _METHOD)
         p = matmul(weights,S)
         self._tmp_p = p
@@ -251,6 +268,16 @@ class SmartCribbageAgent(CribbageAgent):
         # v TODO: HOW DO WE DECIDE?????
         # TODO: need to decide to be able to test this method and to test training
         pass
+
+    def retrieve_weights(self, opponent_score):
+        m = self.score
+        o = opponent_score
+        d = int(dealer)
+        weights = self.weights[m][o][d]
+        if weights is None or weights == []:
+            weights = [1/num_strats] * num_strats
+            self.weights[m][o][d] = weights
+        return weights
 
     '''
     N.B.

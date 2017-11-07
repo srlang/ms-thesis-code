@@ -120,6 +120,9 @@ def test__choose_cards():
     # TODO: what should the choice made be?
     #assert True
 
+def test_retrieve_weights():
+    assert False
+
 def test_reward():
     assert False
 
