@@ -51,6 +51,7 @@ def test_create_agent():
     assert first_weight.opp_score == 11
     assert first_weight.w0 == 0.33
     assert first_weight.w1 == 0.67
+    assert False # Rewrite without weights DB
 
 def test_create_agents():
     input_file = './checkpoints/test_input.csv'
@@ -69,6 +70,7 @@ def test_create_agents():
     assert first_weight.opp_score == 11
     assert first_weight.w0 == 0.33
     assert first_weight.w1 == 0.67
+    assert False # Rewrite without weights DB
 
 def test_save_checkpoint():
     #global dir_permissions
@@ -109,6 +111,7 @@ def test_save_checkpoint():
     assert access(checkpts_dir+'/'+exp_filename, file_permissions)
     # again, manually verify first couple of times
     #assert False # output does not include actual weights
+    assert False # Rewrite without weights DB
 
 def test_load_checkpoint():
     # create agent
@@ -130,7 +133,9 @@ def test_load_checkpoint():
             first.dealer and\
             first.w0 == 0.33 and\
             first.w1 == 0.67
+    assert False # Rewrite without weights DB
 
 def test_train():
+    assert False # Rewrite without weights DB
     assert False
 
