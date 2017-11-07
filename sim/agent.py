@@ -261,6 +261,7 @@ class SmartCribbageAgent(CribbageAgent):
         self._tmp_S = S
         #weights = weights_record.weights(num_strategies)
         weights = self.retrieve_weights(opponent_score)
+        self.add_to_visited_path(opponent_score)
         PD('weights: %s' % str(weights), _METHOD)
         p = matmul(weights,S)
         self._tmp_p = p
@@ -278,6 +279,10 @@ class SmartCribbageAgent(CribbageAgent):
             weights = [1/num_strats] * num_strats
             self.weights[m][o][d] = weights
         return weights
+
+    def add_to_visited_path(self, opponent_score):
+        self.weights_path.append((self.score, opponent_score, self.is_dealer))
+        pass
 
     '''
     N.B.
