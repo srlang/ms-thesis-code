@@ -99,15 +99,15 @@ def test__constructor():
     assert agent._tmp_p is None
 
 def test__choose_cards():
+    global _db_setup_run
+    global _db_setup_suc
     db_setup()
+    assert _db_setup_run and _db_setup_suc
     # single strategy
     input_file = './checkpoints/test_input.csv'
-    b,agent = create_agent(input_file, 'NimiTällä')
-    assert b
-    #agent = SmartCribbageAgent()
-    agent.cards = [0, 4, 3, 5, 2, 1]
-    #agent.strategies = [hand_max_avg, hand_max_poss]
-    #agent.strategy_weights = [0.32, 0.68]
+    agent = create_agent(input_file, 'NimiTällä')
+    assert agent is not None
+    agent.hand = [0, 4, 3, 5, 2, 1]
     agent.score = 10
     agent.is_dealer = True
     agent._choose_cards(opponent_score=11)
@@ -121,7 +121,14 @@ def test__choose_cards():
     #assert True
 
 def test_retrieve_weights():
-    assert False
+    input_file = './checkpoints/test_input.csv'
+    agent = create_agent(input_file, 'NimiTällä')
+    assert agent is not None
+
+    agent.score = 10
+    agent.is_dealer = True
+    weights = agent.retrieve_weights(opponent_score=11)
+    assert weights == [0.33, 0.67]
 
 def test_reward():
     assert False
@@ -129,59 +136,48 @@ def test_reward():
 def test_punish():
     assert False
 
+def test__modify_weights():
+    assert False
+
+def test__weights_modifier():
+    assert False
+
 def test_save_weights_str():
-    db_setup()
+    #db_setup()
     input_file = './checkpoints/test_input.csv'
-    b,agent = create_agent(input_file, 'NimiTällä')
-    assert b
+    agent = create_agent(input_file, 'NimiTällä')
+    assert agent is not None
 
     exp_str = '''my_score opp_score dealer hand_max_min hand_max_avg
 10 11 1 0.33 0.67
 12 13 1 0.4 0.6'''
     assert exp_str == agent.save_weights_str()
 
-def test__retrieve_all_weights():
-    db_setup()
-    input_file = './checkpoints/test_input.csv'
-    b,agent = create_agent(input_file, 'NimiTällä')
-    assert b
-
-    weights = agent._retrieve_all_weights()
-    assert weights.count() == 2
-    first = weights.first()
-    assert first.my_score == 10
-    assert first.opp_score == 11
-    assert first.dealer
-    assert first.w0 == 0.33
-    assert first.w1 == 0.67
-    assert first.w2 is None
-    assert first.w3 is None
-    #second = weights.get(1)
-    second = weights.filter_by(my_score=12).first()
-    assert second is not None
-    assert second.my_score == 12
-    assert second.opp_score == 13
-    assert second.dealer
-    assert second.w0 == 0.40
-    assert second.w1 == 0.60
-    assert second.w2 is None
-    assert second.w3 is None
-
-def test_assign_strategies():
+def test__assign_strategies():
     from strategy3 import hand_max_min as hmm, hand_max_avg as hma
     strat_names_input = ['hand_max_min', 'hand_max_avg']
     exp_strat_names = ['hand_max_min', 'hand_max_avg']
     exp_strats = [hmm, hma]
 
-    db_setup()
-    input_file = './checkpoints/test_input.csv'
-    b,agent = create_agent(input_file, 'NimiTällä')
-    assert b
+    #input_file = './checkpoints/test_input.csv'
+    #agent = create_agent(input_file, 'NimiTällä')
+    #assert agent is not None
+    agent = SmartCribbageAgent()
 
-    agent.assign_strategies(strat_names_input)
+    agent._assign_strategies(strat_names_input)
     assert agent._strat_names == exp_strat_names
     assert agent.strategies == exp_strats
 
 def test__select_next_valid_peg_card():
     assert False
+
+def test_load_checkpoint():
+    input_file = './checkpoints/test_input.csv'
+    #agent = create_agent(input_file, 'NimiTällä')
+    #assert agent is not None
+
+    agent = SmartCribbageAgent()
+    agent.load_checkpoint(input_file)
+    assert agent.weights[10][11][1] == [0.33, 0.67]
+    assert agent.weights[12][13][1] == [0.40, 0.60]
 

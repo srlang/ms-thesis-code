@@ -40,68 +40,31 @@ def create_agent(start_weights_file, name):
     agent = SmartCribbageAgent()
     agent.name = name
 
-
-    PD('creating engine and session', _METHOD)
-    engine = create_engine('sqlite:///:memory:')
-    create_weight_tables(engine)
-    Session = sessionmaker(engine)
-    agent.weights_db_session = Session()
-
     PD('loading checkpoint...', _METHOD)
-    succ, strat_names = load_checkpoint(start_weights_file, agent.weights_db_session)
-    agent.assign_strategies(strat_names)
+    strat_names = agent.load_checkpoint(start_weights_file)
+    #agent.assign_strategies(strat_names)
     PD('...done', _METHOD)
-    PD('succ=%s' % str(succ), _METHOD)
 
-    PD('exiting', _METHOD)
-    return succ, agent
+    PD('exiting with agent=%s' % str(agent), _METHOD)
+    return agent
 
 def create_agents(a1sf, a2sf):
     # params: start file, output_format
-    suc1, agent1 = create_agent(a1sf, 'agent1')
-    suc2, agent2 = create_agent(a2sf, 'agent2')
-    return suc1, suc2, agent1, agent2
+    agent1 = create_agent(a1sf, 'agent1')
+    agent2 = create_agent(a2sf, 'agent2')
+    return agent1, agent2
+
+def _write_checkpoint(output, filename, directory='./checkpoints'):
+    if not access(directory, W_OK):
+        mkdir(directory)
+    with open(directory + '/' + filename, 'w') as f:
+        f.write(output)
 
 def save_checkpoint(agent, epoch, start_time_str, checkpoints_dir='./checkpoints'):
-    if not access(checkpoints_dir, W_OK):
-        mkdir(checkpoints_dir)
     filename = checkpoints_dir + '/' + \
             CHECKPOINT_FILENAME_FORMAT % (agent.name, start_time_str, epoch)
-    with open(filename, 'w') as f:
-        f.write(agent.save_weights_str())
-        #print(agent.save_weight_str(), file=f)
-    pass
-
-def load_checkpoint(filename, db_sess):
-    _METHOD = 'load_checkpoint'
-    PD('entering', _METHOD)
-    PD('reading input file...', _METHOD)
-    csv_table = read_csv(filename, sep=' ') #, header=True)
-    PD('...done', _METHOD)
-    ret = True
-
-#    PD('ensuring database tables exist...', _METHOD)
-#    create_weight_tables(
-#    PD('...done', _METHOD)
-
-    for _,row in csv_table.iterrows():
-        wc = WeightCoordinate(my_score=row.iloc[0], opp_score=row.iloc[1], dealer=row.iloc[2])
-        for i in range(3, len(row)):
-            wc.__dict__['w%d'%(i-3)] = float(row.iloc[i])
-        try:
-            db_sess.add(wc)
-        except SQLAlchemyError as s:
-            PD('sql error: %s' % str(s), _METHOD)
-            ret = False
-    try:
-        db_sess.commit()
-    except SQLAlchemyError as s:
-        PD('sql error: %s' % str(s), _METHOD)
-        ret = False
-
-    headers = [header for header in csv_table][3:] # cut out already known
-    PD('exiting with ret=%s, headers=%s' % (str(ret), str(headers)), _METHOD)
-    return ret, headers
+    output = agent.save_weights_str()
+    _write_checkpoint(output, filename, checkpoints_dir)
 
 def train(agent1stratfile, agent2stratfile, epochs=1000, epoch_checkpoint=None):
     if epoch_checkpoint is None:
@@ -115,9 +78,7 @@ def train(agent1stratfile, agent2stratfile, epochs=1000, epoch_checkpoint=None):
         if (epoch % epoch_checkpoint) == 0:
             save_checkpoint(agent1, epoch, start_time)
             save_checkpoint(agent2, epoch, start_time)
-            pass
 
         agent1.reset()
         agent2.reset()
-        pass
 

@@ -2,24 +2,18 @@
 
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
-from sqlalchemy.exc import SQLAlchemyError
+from copy                   import deepcopy
+from numpy                  import matmul
+from pandas                 import read_csv
+from re                     import sub
+from sqlalchemy.exc         import SQLAlchemyError
+from sklearn.preprocessing  import normalize as sknorm
 
-from copy           import deepcopy
-
-from numpy          import matmul
-
-
-#from config     import STRATEGIES, STRATEGY_WEIGHTS
 
 from cribbage   import score_hand, hand_values, card_value, GoException
-
 import strategy3 as strategy_module
 from strategy3  import hand_evaluator
-#STRATEGIES = []
-#STRATEGY_WEIGHTS = []
-
 from weights    import WeightCoordinate, read_weights
-
 from utils      import PD
 
 class CribbageAgent(object):
@@ -148,6 +142,15 @@ I like choice 2 better
 
 '''
 
+def blank_weights():
+    return [
+            [
+                [ 
+                    None for d in [0,1]
+                ]
+                for o in range(121) ] 
+            for m in range(121) ]
+
 class SmartCribbageAgent(CribbageAgent):
 
     def __init__(self): #, strategies, strat_weights):
@@ -163,13 +166,17 @@ class SmartCribbageAgent(CribbageAgent):
         #self.opponent = None
         # self.weights is a 4-d array:
         #   my-score -> opp_score -> dealer -> weights_list
-        self.weights = [
-                        [
-                            [None for dealer in [0,1]]
-                        ]
-                    ]
+        self.weights = blank_weights()
 
-    def assign_strategies(self, strats_str_list):
+    def reset(self):
+        CribbageAgent.reset(self)
+        self._tmp_p = None
+        self._tmp_S = None
+        self.game_weights_path = []
+        self._strat_names = []
+        self.weights = blank_weights()
+
+    def _assign_strategies(self, strats_str_list):
         self._strat_names = strats_str_list
         self.strategies = [getattr(strategy_module, strat_name) \
                                 for strat_name in self._strat_names]
@@ -187,68 +194,6 @@ class SmartCribbageAgent(CribbageAgent):
                 max_score = score
                 ret_card = card
         return ret_card
-
-###    def _choose_cards(self, **kwargs):
-###        # Return keep,toss tuple. Do nothing else.
-###        _METHOD = 'SmartCribbageAgent._choose_cards'
-###        # using self.hand[0:5]
-###        # TODO
-###        self.hand= sorted(self.hand)
-###        PD('sorted cards: %s' % str(self.hand), _METHOD)
-###        #w,
-###        S = hand_evaluator(self.hand, self.strategies) #, self.strategy_weights)
-###        self._tmp_S = S
-###        #PD('w=%s' % str(w), _METHOD)
-###        PD('S=%s' % str(S), _METHOD)
-###        PD('_strat_names: %s' % str(self._strat_names), _METHOD)
-###        num_strategies = len(self._strat_names)
-###        PD('num_strategies: %d' % num_strategies, _METHOD)
-###        # retrieve weights_record from database
-###        weights_record = read_weights(self.weights_db_session,
-###                                self.score,
-###                                kwargs['opponent_score'],
-###                                self.is_dealer)
-###        if weights_record is None:
-###            PD('weights_record is None, creating with %d weights' % num_strategies, _METHOD)
-###            # insert record for later consideration
-###            # initialize to "blank" so each option considered valid
-###            # basically, this shouldn't ever be triggered
-###            wc = WeightCoordinate(my_score=self.score,
-###                    opp_score=kwargs['opponent_score'], #self.opponent.score,
-###                    dealer=self.is_dealer)
-###            PD('created wc=%s' % str(wc), _METHOD)
-###            PD('starting wc.__dict__ = %s' % str(wc.__dict__), _METHOD)
-###            for i in range(num_strategies):
-###                PD('assigning wc.w%d = %f' % (i, 1.0/num_strategies), _METHOD)
-###                #wc.__dict__['w%d'%i] = 1.0 / num_strategies
-###                setattr(wc, 'w%d'%i, 1.0/num_strategies)
-###            PD('After loop: wc.__dict__ = %s' % str(wc.__dict__), _METHOD)
-###            PD('final wc=%s' % str(wc), _METHOD)
-###            PD('final wc.__dict__=%s' % str(wc.__dict__), _METHOD)
-###            PD('assigning weights_record to %s' % str(wc), _METHOD)
-###            weights_record = wc
-###            try:
-###                self.weights_db_session.add(wc)
-###                self.weights_db_session.commit()
-###            except SQLAlchemyError as sql:
-###                PD('sql exception: %s' % str(sql), _METHOD)
-###                pass
-###            except Exception as e:
-###                PD('exception: %s' % str(e), _METHOD)
-###                pass
-###            weights_record = read_weights(self.weights_db_session,
-###                                    self.score,
-###                                    kwargs['opponent_score'],
-###                                    self.is_dealer)
-###            PD('re-queried weights: %s' % str(weights_record), _METHOD)
-###            PD('re-queried weights.__dict__: %s' % str(weights_record.__dict__), _METHOD)
-###
-###            #weights_record = wc
-###
-###        PD('weights_record=%s' % str(weights_record), _METHOD)
-###        PD('weights_record.__dict__ = %s' % str(weights_record.__dict__), _METHOD)
-###        # keep a record of where we tread
-###        self.game_weights_path.append(weights_record)
 
     def _choose_cards(self, opponent_score): #**kwargs):
         # Return keep,toss tuple. Do nothing else.
@@ -270,10 +215,25 @@ class SmartCribbageAgent(CribbageAgent):
         # TODO: need to decide to be able to test this method and to test training
         pass
 
+    def load_checkpoint(self, start_weights_file):
+        csv_table = read_csv(start_weights_file, sep=' ')
+
+        for _,row in csv_table.iterrows():
+            #m,o,d = row.iloc[:3]
+            m = int(row.iloc[0])
+            o = int(row.iloc[1])
+            d = int(row.iloc[2])
+            self.weights[m][o][d] = list(row.iloc[3:])
+
+        strats = [header for header in csv_table][3:]
+        self._assign_strategies(strats)
+        return strats
+
     def retrieve_weights(self, opponent_score):
         m = self.score
         o = opponent_score
-        d = int(dealer)
+        d = int(self.is_dealer)
+        num_strats = len(self._strat_names)
         weights = self.weights[m][o][d]
         if weights is None or weights == []:
             weights = [1/num_strats] * num_strats
@@ -281,7 +241,7 @@ class SmartCribbageAgent(CribbageAgent):
         return weights
 
     def add_to_visited_path(self, opponent_score):
-        self.weights_path.append((self.score, opponent_score, self.is_dealer))
+        self.game_weights_path.append((self.score, opponent_score, self.is_dealer))
         pass
 
     '''
@@ -300,22 +260,48 @@ class SmartCribbageAgent(CribbageAgent):
                 Check back into this after we've read the book a bit more
     '''
     def reward(self, other_agent_score):
-        # using self.weight_db_session, self.game_weights_path
-        # TODO
-        pass
+        self._modify_weights(self._weights_modifier(other_agent_score))
 
     def punish(self, other_agent_score):
-        # using self.weight_db_session, self.game_weights_path
-        # TODO
+        self._modify_weights(self._weights_modifier(other_agent_score))
+
+    def _modify_weights(self, weights_mod):
+        decay = 0.10 # "percent" to decay adjustments at each step back
+        for m,o,d in self.game_weights_path:
+            start = self.weights[m][o][d]
+            mid = [x * x * (1.0 + weights_mod) for x in start]
+            end = normalize(mid)
+            self.weights[m][o][d] = end
+            weights_mod *= (1.0 - decay) # allow for decaying return values
+            # because early points should be punished less severely since more
+            # possible outcomes from that position
         pass
+
+    def _weights_modifier(self, other_agent_score):
+        diff = self.score - other_agent_score
+        return diff / 120.0 # scale to percentage of points in a game
+        #question for later: 120 or 121?
 
     def save_weights_str(self):
         header_ln = 'my_score opp_score dealer ' + ' '.join(self._strat_names) + '\n'
-        weights = self._retrieve_all_weights()
-        return header_ln + '\n'.join([weight.to_str(len(self._strat_names))
-                                    for weight in weights])
+        ret = '\n'.join(
+                [
+                        (
+                            (('%d %d %d ' % (m,o,d)) + \
+                                 ' '.join(
+                                        [str(w) for w in self.weights[m][o][d]]
+                                        )
+                                 ) if self.weights[m][o][d] is not None
+                                        else ''
+                        )
+                        for m in range(len(self.weights))
+                    for o in range(len(self.weights[m]))
+                for d in [0,1]
+                ]
+            ).strip()
+        #ret = filter(lambda line: not re.match(r'^\s*$', line), ret)
+        ret = sub(r'(\n){2,}', '\n', ret)
+        return header_ln + ret
 
-    def _retrieve_all_weights(self):
-        all_weights = self.weights_db_session.query(WeightCoordinate)
-        return all_weights
-
+def normalize(vector):
+    return list(sknorm([vector], norm='l1')[0])
