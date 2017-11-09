@@ -150,9 +150,6 @@ def hand_max_poss(kts, pinfo=None):
     # Choose the hand(s) with the maximum possible score (gambler's strategy)
     return kts_evaluator(kts, 'kmax', False)
 
-def hand_max_min(kts, pinfo=None):
-    return kts_evaluator(kts, 'kmin', False)
-
 def crib_min_avg(kts, pinfo=None):
     # Choose the hand(s) with the minimum average crib
     return kts_evaluator(kts, 'tavg', True)
@@ -170,3 +167,24 @@ def pegging_max_med_gained(kts, pinfo):
 def pegging_min_avg_given(kts, pinfo):
     # Choose the hand which has given the least points up, on average
     return pegging_evaluator(pinfo, 'given_avg', True)
+
+ALL_STRATEGY_NAMES = [
+                        'hand_max_min',
+                        'hand_max_avg',
+                        'hand_max_med',
+                        'hand_max_poss',
+                        'crib_min_avg',
+                        'pegging_max_avg_gained',
+                        'pegging_max_med_gained',
+                        'pegging_min_avg_given'
+                    ]
+ALL_STRATEGIES = [
+                    hand_max_min,
+                    hand_max_avg,
+                    hand_max_med,
+                    hand_max_poss,
+                    crib_min_avg,
+                    pegging_max_avg_gained,
+                    pegging_max_med_gained,
+                    pegging_min_avg_given
+                ]
