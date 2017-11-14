@@ -21,15 +21,20 @@ def play_training_game(agent1, agent2):
     game = CribbageGame(agent1, agent2)
     game.play_full_game()
 
-    if agent1.is_winner:
-        agent1.reward(agent2.score)
-    else:
-        agent1.punish(agent2.score)
+    # modify weights
+    #   (no need for punish/reward specifically because generic modify_weights)
+    agent1.modify_weights(agent2.score)
+    agent2.modify_weights(agent1.score)
 
-    if agent2.is_winner:
-        agent2.reward(agent1.score)
-    else:
-        agent2.punish(agent1.score)
+###    if agent1.is_winner:
+###        agent1.reward(agent2.score)
+###    else:
+###        agent1.punish(agent2.score)
+###
+###    if agent2.is_winner:
+###        agent2.reward(agent1.score)
+###    else:
+###        agent2.punish(agent1.score)
 
     return game
 
@@ -55,14 +60,20 @@ def create_agents(a1sf, a2sf):
     return agent1, agent2
 
 def _write_checkpoint(output, filename, directory='./checkpoints'):
+    #PD('entering', '_write_checkpoint')
     if not access(directory, W_OK):
+        #PD('no access to dir(%s), creating' % directory)
         mkdir(directory)
+    #PD('writing to file: %s/%s' % (directory,filename), '_write_checkpoint')
     with open(directory + '/' + filename, 'w') as f:
         f.write(output)
 
 def save_checkpoint(agent, epoch, start_time_str, checkpoints_dir='./checkpoints'):
-    filename = checkpoints_dir + '/' + \
-            CHECKPOINT_FILENAME_FORMAT % (agent.name, start_time_str, epoch)
+    #PD('entering agent=%s, epoch=%s, start_time_str=%s, cehckpoints_fir=%s' % \
+    #        (agent,epoch,start_time_str,checkpoints_dir), 'save_checkpoint')
+    #filename = checkpoints_dir + '/' + \
+    filename = CHECKPOINT_FILENAME_FORMAT % (agent.name, start_time_str, epoch)
+    #PD('filename=%s' % filename, 'save_checkpoint')
     output = agent.save_weights_str()
     _write_checkpoint(output, filename, checkpoints_dir)
 
