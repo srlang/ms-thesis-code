@@ -7,25 +7,40 @@ from random import randint, sample
 
 from utils import PD
 
+#       Spades, Clubs, Hearts, Diamonds
+SUITS = ['S', 'C', 'H', 'D']
+NUMBER_SUITS = len(SUITS)
+#           0    1    2    3    4    5    6    7    8    9     10   11   12
+CLASSES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+JACK = 10
+NUMBER_CLASSES = len(CLASSES)
+
+def htoc(card_str):
+    # using SUITS, CLASSES
+    suit = SUITS.index(card_str[-1])
+    class_ = CLASSES.index(card_str[:-1])
+    return (4 * class_) + suit
+
+def htoc_str(cards_str):
+    return [htoc(card_str) for card_str in cards_str.split()]
+
+def ctoh(card):
+    return CLASSES[card_class(card)] + SUITS[card_suit(card)]
+
+def ctoh_str(cards):
+    return ' '.join([ctoh(card) for card in cards])
 
 def _list_comp(arr, func):
     ''' apply a function across a set of items '''
     return [func(x) for x in arr]
 
 # scoring methods
-#       Spades, Clubs, Hearts, Diamonds
-SUITS = ['S', 'C', 'H', 'D']
-NUMBER_SUITS = len(SUITS)
 def card_suit(card):
     return card % NUMBER_SUITS
 
 def hand_suits(hand):
     return _list_comp(hand, card_suit)
 
-#           0    1    2    3    4    5    6    7    8    9     10   11   12
-CLASSES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-JACK = 10
-NUMBER_CLASSES = len(CLASSES)
 def card_class(card):
     return card // NUMBER_SUITS
 
@@ -265,8 +280,11 @@ class CribbageGame(object):
             _,crib1 = self.dealer.choose_cards(opponent_score=self.pone.score)
             _,crib2 = self.pone.choose_cards(opponent_score=self.dealer.score)
             crib = []
-            crib.append(crib1)
-            crib.append(crib2)
+            #crib.append(crib1)
+            #crib.append(crib2)
+            crib += list(crib1)
+            crib += list(crib2)
+            PD('>>> dealer.crib = %s' % str(crib), _METHOD)
             self.dealer.crib = crib
 
             PD('>> checking if cut card is a jack', _METHOD)
@@ -314,7 +332,7 @@ class CribbageGame(object):
         PD("begin", "peg()")
 
         while self._cards_to_be_played and not self.game_finished:
-            PD('begin loop with agent(%s)' % player._name, 'peg()')
+            PD('begin loop with agent(%s)' % player.name, 'peg()')
             last_31 = False
 
             # let the player play his card
@@ -322,8 +340,13 @@ class CribbageGame(object):
                 # notable "issue": there is no checking for validity of card
                 #   played here. agents are expected to determine valid cards
                 #   themselves. technically, they can cheat if they don't check
+                PD('entering try block', 'peg()')
                 played_card = player.next_peg_card(cards_played_this_round, go=go)
+                PD('played_card = %d' % played_card, 'peg()')
+                PD('appending to cards_played_this_round...', 'peg()')
                 cards_played_this_round.append(played_card)
+                PD('...done', 'peg()')
+                PD('appending to cards_played', 'peg()')
                 cards_played.append(played_card)
                 PD('>> Playing card [%d] for [%d] points' % (played_card, score_peg(cards_played_this_round)), 'peg()')
                 player.score += score_peg(cards_played_this_round)
