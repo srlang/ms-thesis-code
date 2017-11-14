@@ -4,6 +4,29 @@ from cribbage import *
 from cribbage import _trim_zeros, _reset_pegging
 #import cribbage
 
+def test_htoc():
+    assert htoc('10C') == 37
+    assert htoc('5S') == 16
+    try:
+        assert htoc('11K') == 22 # doesn't matter, should fail
+        assert False
+    except:
+        assert True
+
+def test_htoc_str():
+    assert htoc_str('10C 5S') == [37, 16]
+
+def test_ctoh():
+    assert ctoh(37) == '10C'
+    assert ctoh(16) == '5S'
+    try:
+        assert ctoh(66) == 'BLah'
+    except:
+        assert True
+
+def test_ctoh_str():
+    assert ctoh_str([37, 16]) == '10C 5S'
+
 def test_card_suit():
     assert card_suit(16) == 0
     assert card_suit(21) == 1
