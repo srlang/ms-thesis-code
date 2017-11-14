@@ -1,17 +1,16 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
+from copy       import  deepcopy
 from itertools  import  combinations
 
 from agent      import  SmartCribbageAgent
-
+from cribbage   import  htoc_str, htoc, GoException
 from strategy3  import  hand_max_avg, hand_max_poss
-
 from records    import  create_tables,\
                         _populate_keep_throw_statistics,\
                         session as records_session,\
                         KeepThrowStatistics,\
                         AggregatePlayedHandRecord
-
 from train      import  create_agent
 from utils      import  PD
 
@@ -131,16 +130,72 @@ def test_retrieve_weights():
     assert weights == [0.33, 0.67]
 
 def test_reward():
-    assert False
+    assert True
 
 def test_punish():
-    assert False
+    assert True
 
-def test__modify_weights():
-    assert False
+def test_modify_weights():
+    input_file = './checkpoints/random_start.txt'
+    agent = create_agent(input_file, 'NimiTällä')
+    path = [
+                    (0,0,0),
+                    (10, 14, 1),
+                    (20, 19, 0),
+                    (55, 40, 1),
+                    (70, 66, 0),
+                    (90, 77, 1),
+                    (110, 108, 0)
+                    ]
+    original_weights_ref = [agent.weights[m][o][d] for m,o,d in path]
+    original_weights = deepcopy(original_weights_ref)
+    agent.game_weights_path = path
+    agent.modify_weights(0.175)
+
+    # check that weights "increased"
+    for i in range(len(path)):
+        m,o,d = path[i]
+        ow = original_weights[i]
+
+        maow = max(ow)
+        maow_loc = ow.index(maow)
+        assert agent.weights[m][o][d][maow_loc] > maow
+
+        miow = min(ow)
+        miow_loc = ow.index(miow)
+        assert agent.weights[m][o][d][miow_loc] < miow
+
+    # re-save weights
+    original_weights_ref = [agent.weights[m][o][d] for m,o,d in path]
+    original_weights = deepcopy(original_weights_ref)
+    agent.modify_weights(-0.134)
+
+    # check that weights "decreased"
+    for i in range(len(path)):
+        m,o,d = path[i]
+        ow = original_weights[i]
+
+        maow = max(ow)
+        maow_loc = ow.index(maow)
+        assert agent.weights[m][o][d][maow_loc] < maow
+
+        miow = min(ow)
+        miow_loc = ow.index(miow)
+        assert agent.weights[m][o][d][miow_loc] > miow
+
+    #assert False # Reminder: Uniform weights will not be adjustable
 
 def test__weights_modifier():
-    assert False
+    agent = SmartCribbageAgent()
+    agent.score = 1345 #truncated down to 121
+    opponent_score = 100
+    exp_out = 21.0 / 121.0
+    assert exp_out == agent._weights_modifier(opponent_score)
+
+    agent.score = 98
+    opponent_score = 125
+    exp_out = -23.0 / 121.0
+    assert exp_out == agent._weights_modifier(opponent_score)
 
 def test_save_weights_str():
     #db_setup()
@@ -169,7 +224,30 @@ def test__assign_strategies():
     assert agent.strategies == exp_strats
 
 def test__select_next_valid_peg_card():
-    assert False
+    agent = SmartCribbageAgent()
+
+    cards_played = htoc_str('10S')
+    valid_cards = htoc_str('5C 4H 3S 10C')
+    exp = htoc('5C')
+    assert agent._select_next_valid_peg_card(cards_played, valid_cards) == exp
+
+    # order matters
+    cards_played = htoc_str('10S')
+    valid_cards = htoc_str('10C 5C 4H 3S')
+    exp = htoc('10C')
+    assert agent._select_next_valid_peg_card(cards_played, valid_cards) == exp
+
+    # select to get a run instead of a fifteen
+    cards_played = htoc_str('6C 7S')
+    valid_cards = htoc_str('2S 5H')
+    exp = htoc('5H')
+    assert agent._select_next_valid_peg_card(cards_played, valid_cards) == exp
+
+    # select a triple instead of a fifteen
+    cards_played = htoc_str('6C 6S')
+    valid_cards = htoc_str('3S 6H')
+    exp = htoc('6H')
+    assert agent._select_next_valid_peg_card(cards_played, valid_cards) == exp
 
 def test_load_checkpoint():
     input_file = './checkpoints/test_input.csv'
@@ -181,3 +259,71 @@ def test_load_checkpoint():
     assert agent.weights[10][11][1] == [0.33, 0.67]
     assert agent.weights[12][13][1] == [0.40, 0.60]
 
+def test_can_peg_more():
+    agent = SmartCribbageAgent()
+    # have plenty of room
+    agent._peg_cards_left = [45, 50, 51, 22]
+    cards_played = [1, 2, 3, 4]
+    assert agent.can_peg_more(cards_played)
+
+    # Face cards have been played, total=30, only have 10s left
+    agent._peg_cards_left = [45, 46, 47, 48]
+    cards_played = [41, 42, 43]
+    assert not agent.can_peg_more(cards_played)
+
+    # 2 left, 2 in the hand
+    agent._peg_cards_left = [5, 10, 15, 20]
+    cards_played = [41, 42, 33] # J, J, 9
+    assert agent.can_peg_more(cards_played)
+
+    # 2 left, 3 minimum in hand
+    agent._peg_cards_left = [9, 10, 13, 20]
+    cards_played = [41, 42, 33] # J, J, 9
+    assert not agent.can_peg_more(cards_played)
+
+    # no cards left, can't peg
+    agent._peg_cards_left = []
+    assert not agent.can_peg_more(cards_played)
+
+def test_has_peg_cards_left():
+    agent = SmartCribbageAgent()
+
+    # null peg cards
+    agent._peg_cards_left = None
+    assert not agent.has_peg_cards_left()
+
+    # empty list
+    agent._peg_cards_left = []
+    assert not agent.has_peg_cards_left()
+
+    # has cards left
+    agent._peg_cards_left = [1,2,3]
+    assert agent.has_peg_cards_left()
+
+def test_next_peg_card():
+    agent = SmartCribbageAgent()
+
+    # can't peg anymore, raise exception
+    try:
+        agent._peg_cards_left = [40, 41]
+        agent._peg_cards_gone = [42, 43]
+        cards_played = [40, 39, 41]
+        card = agent.next_peg_card(cards_played)
+        assert False
+    except GoException:
+        assert True
+
+    # can peg, make sure the correct things are updated
+    agent._peg_cards_left = [1, 2]
+    agent._peg_cards_gone = [5, 6]
+    cards_played = [5, 7, 6]
+    card = agent.next_peg_card(cards_played)
+    assert (card in agent._peg_cards_gone) and \
+            (card not in agent._peg_cards_left)
+
+    # test that invalid cards are "skipped"
+    agent._peg_cards_left = [40, 41, 1]
+    agent._peg_cards_gone = [3]
+    cards_played = [37, 38, 39]
+    card = agent.next_peg_card(cards_played)
+    assert card == 1

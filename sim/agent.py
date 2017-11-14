@@ -3,18 +3,29 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
 from copy                   import deepcopy
+from itertools              import combinations
 from numpy                  import matmul
+from numpy.random           import choice
 from pandas                 import read_csv
+from random                 import random
 from re                     import sub
+from statistics             import variance
 from sqlalchemy.exc         import SQLAlchemyError
 from sklearn.preprocessing  import normalize as sknorm
 
 
-from cribbage   import score_hand, hand_values, card_value, GoException
+from cribbage               import score_hand,\
+                                    score_peg,\
+                                    hand_values,\
+                                    card_value,\
+                                    GoException
+from strategy2              import _get_all_indices
 import strategy3 as strategy_module
-from strategy3  import hand_evaluator
-from weights    import WeightCoordinate, read_weights
-from utils      import PD
+from strategy3              import hand_evaluator
+from weights                import WeightCoordinate, read_weights
+from utils                  import PD
+
+KEEP_AMOUNT = 4
 
 class CribbageAgent(object):
 
@@ -55,7 +66,7 @@ class CribbageAgent(object):
     def choose_cards(self, **kwargs):
         # tested
         keep, toss = self._choose_cards(**kwargs)
-        self.hand = keep
+        self.hand = list(keep)
         #self.game.add_to_crib(toss)
         self._peg_cards_left = deepcopy(self.hand)
         self._peg_cards_gone = []
@@ -69,10 +80,14 @@ class CribbageAgent(object):
 
     def next_peg_card(self, cards_played, go=False):
         # tested
+        _METHOD = 'Agent.next_peg_card'
+        PD('entering', _METHOD)
         if self.can_peg_more(cards_played):
+            PD('can peg more', _METHOD)
             to_play = self._select_next_peg_card(cards_played, go=go)
             self._peg_cards_left.remove(to_play)
             self._peg_cards_gone.append(to_play)
+            PD('exiting with to_play=%d' % to_play, _METHOD)
             return to_play
         else:
             raise GoException
@@ -213,7 +228,40 @@ class SmartCribbageAgent(CribbageAgent):
         PD('P=%s' % str(p), _METHOD)
         # v TODO: HOW DO WE DECIDE?????
         # TODO: need to decide to be able to test this method and to test training
-        pass
+        # temporary decision:
+        #   EXPLORE_RATE% chance of picking randomly according to existing weights
+        #       this should be (obviously) configurable
+        explore_rand = random()
+        PD('explore_rand=%f' % explore_rand, _METHOD)
+        # N.B.: need to have explore_rate be dependant upon how varying the weights
+        #   already are (more accurately inversely correlated)
+        #   variance is the word you're looking for
+        PD('variance=%f' % variance(p), _METHOD)
+        explore_rate = 0.3 - variance(p) # EXPLORE_RATE
+        PD('explore_rate=%f' % explore_rate, _METHOD)
+        if explore_rand < explore_rate:
+            PD("explore_rand < explore_rate, exploring",_METHOD)
+            # explore step, choose randomly according to weights
+            # numpy.random.choice(stuff, p=probabilities)
+            p_choice = choice(len(p), p=normalize(p)) # fix params
+            index = p_choice
+            PD("exploring to use index=%d" % index, _METHOD)
+        else:
+            PD('exploration not in the cards this time, using largest possible probability', _METHOD)
+            # choose the largest possible percentage
+            # in multi-modal weights produced, a random choice will be made
+            #   between these strategies with uniform probability
+            # random.choice --> uniform choice
+            # random.choices --> weighted choice, but that's used for
+            # numpy choice also allows uniform choice
+            indices = _get_all_indices(p, max(p))
+            index = choice(indices)
+            PD('Using %d of available %s' % (index, str(indices)), _METHOD)
+
+        keep = list(combinations(self.hand, KEEP_AMOUNT))[index]
+        toss = [card for card in self.hand if card not in keep]
+        PD('exiting with keep=%s, toss=%s' % (keep,toss), _METHOD)
+        return keep,toss
 
     def load_checkpoint(self, start_weights_file):
         csv_table = read_csv(start_weights_file, sep=' ')
@@ -260,26 +308,41 @@ class SmartCribbageAgent(CribbageAgent):
                 Check back into this after we've read the book a bit more
     '''
     def reward(self, other_agent_score):
-        self._modify_weights(self._weights_modifier(other_agent_score))
+        self.modify_weights(self._weights_modifier(other_agent_score))
 
     def punish(self, other_agent_score):
-        self._modify_weights(self._weights_modifier(other_agent_score))
+        self.modify_weights(self._weights_modifier(other_agent_score))
 
-    def _modify_weights(self, weights_mod):
+    def modify_weights(self, weights_mod):
+        _METHOD = 'SmartCribbageAgent._modify_weights'
+        PD('entering with weights_mod=%f, path=%s'\
+                % (weights_mod, self.game_weights_path),
+                _METHOD)
         decay = 0.10 # "percent" to decay adjustments at each step back
-        for m,o,d in self.game_weights_path:
+        for m,o,d in reversed(self.game_weights_path):
+            PD('> entering loop with weights_mod=%f' % weights_mod, _METHOD)
             start = self.weights[m][o][d]
-            mid = [x * x * (1.0 + weights_mod) for x in start]
+            PD('> starting weights = %s' % start, _METHOD)
+            # proportional to the square in increase
+            # proportional to inverse square in decrease
+            # N.B.: topic for part of thesis background: regularization
+            # (of the weights, not the decay of the modifier)
+            if weights_mod < 0:
+                mid = [1.0 / (x * x) * (1.0 + weights_mod) for x in start]
+            else:
+                mid = [x * x * (1.0 + weights_mod) for x in start]
             end = normalize(mid)
             self.weights[m][o][d] = end
+            PD('> ending weights = %s' % end, _METHOD)
             weights_mod *= (1.0 - decay) # allow for decaying return values
             # because early points should be punished less severely since more
             # possible outcomes from that position
         pass
 
     def _weights_modifier(self, other_agent_score):
-        diff = self.score - other_agent_score
-        return diff / 120.0 # scale to percentage of points in a game
+        MAX_SCORE = 121
+        diff = min(self.score, MAX_SCORE) - min(other_agent_score, MAX_SCORE)
+        return diff / MAX_SCORE # scale to percentage of points in a game
         #question for later: 120 or 121?
 
     def save_weights_str(self):
