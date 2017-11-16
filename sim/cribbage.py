@@ -273,6 +273,7 @@ class CribbageGame(object):
             PD('> game not finished, starting new round', _METHOD)
             # deal each player cards
             PD('>> dealing cards', _METHOD)
+            self._display('Dealing out cards')
             self.deal_cards()
 
             # choose cards
@@ -287,6 +288,8 @@ class CribbageGame(object):
             PD('>>> dealer.crib = %s' % str(crib), _METHOD)
             self.dealer.crib = crib
 
+            self._display('Cut card=%s' % ctoh(self.cut_card))
+
             PD('>> checking if cut card is a jack', _METHOD)
             if card_class(self.cut_card) == JACK:
                 self.dealer.score += 2
@@ -297,6 +300,7 @@ class CribbageGame(object):
 
             # go through the pegging phase
             PD('>> pegging...', _METHOD)
+            self._display('Pegging')
             self.peg()
             if self.game_finished:
                 PD('>>> game finished in pegging phase', _METHOD)
@@ -305,6 +309,7 @@ class CribbageGame(object):
             PD('>> ... done', _METHOD)
 
             # count final card values
+            self._display('Counting points')
             PD('>> counting...', _METHOD)
             self.count_points()
             if self.game_finished:
@@ -315,6 +320,7 @@ class CribbageGame(object):
 
             # rotate positions
             PD('>> rotating dealer...', _METHOD)
+            self._display('Rotating positions')
             self.rotate_dealer()
             PD('>> ... done', _METHOD)
 
@@ -345,6 +351,8 @@ class CribbageGame(object):
                 PD('played_card = %d' % played_card, 'peg()')
                 PD('appending to cards_played_this_round...', 'peg()')
                 cards_played_this_round.append(played_card)
+                self._display('%s plays %s for %d points' % (player.name, ctoh(played_card), score_peg(cards_played_this_round)), indent=1)
+                self._display('Total: %d' % sum(hand_values(cards_played_this_round)), indent=1)
                 PD('...done', 'peg()')
                 PD('appending to cards_played', 'peg()')
                 cards_played.append(played_card)
@@ -358,12 +366,14 @@ class CribbageGame(object):
                             1 if not _reset_pegging(cards_played_this_round) else 0,\
                             'peg()')
                     player.score += 1 if not _reset_pegging(cards_played_this_round) else 0
+                    self._display('Out of possible cards this round', indent=1)
                     # reset because we have reached the end of the round
                     cards_played_this_round = []
                     go = False
                 else:
                     PD('>> first go achieved, passing play to other player', 'peg()')
                     PD('>> forcefully swapping here to ensure correct path', 'peg()')
+                    self._display('%s says "Go"' % player.name, indent=1)
                     player, observer = observer, player
                     go = True
             except Exception as e:
@@ -408,9 +418,11 @@ class CribbageGame(object):
     def _assign_winner(self):
         '''determine who is the winner of the game when it has finished'''
         if self.pone.score >= 121:
+            self._display('%s Wins!' % self.pone.name)
             self.pone.is_winner = True
             self.dealer.is_winner = False
         elif self.dealer.score >= 121:
+            self._display('%s Wins!' % self.dealer.name)
             self.pone.is_winner =False
             self.dealer.is_winner = True
         else:
@@ -445,6 +457,10 @@ class CribbageGame(object):
         self.dealer, self.pone = self.pone, self.dealer
         self.dealer.is_dealer = True
         self.pone.is_dealer = False
+
+    def _display(self, message, indent=0, indent_char='\t', **kwargs):
+        # allow later classes to override
+        pass
 
 
 class GoException(Exception):

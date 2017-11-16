@@ -1,12 +1,12 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
-from cribbage   import CribbageGame
+#from cribbage   import CribbageGame
 from train      import create_agent
-from ui         import InteractiveCribbageAgent
+from ui         import InteractiveCribbageAgent, InteractiveCribbageGame
 from utils      import PD
 
 def play_test_game(agent, player):
-    game = CribbageGame(agent, player)
+    game = InteractiveCribbageGame(agent, player)
     game.play_full_game()
     return game
 

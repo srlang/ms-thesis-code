@@ -4,7 +4,7 @@
 from re         import sub
 
 from agent      import CribbageAgent
-from cribbage   import ctoh, ctoh_str, htoc, htoc_str, hand_values
+from cribbage   import ctoh, ctoh_str, htoc, htoc_str, hand_values, CribbageGame
 from utils      import PD
 
 
@@ -95,3 +95,8 @@ def all_unique(cards):
     PD('exiting with %s' % str(ret), _METHOD)
     return ret
 
+
+class InteractiveCribbageGame(CribbageGame):
+
+    def _display(self, message, indent=0, indent_char='\t', **kwargs):
+        print((indent_char * indent) + message)
