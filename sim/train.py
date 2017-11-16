@@ -26,16 +26,6 @@ def play_training_game(agent1, agent2):
     agent1.modify_weights(agent2.score)
     agent2.modify_weights(agent1.score)
 
-###    if agent1.is_winner:
-###        agent1.reward(agent2.score)
-###    else:
-###        agent1.punish(agent2.score)
-###
-###    if agent2.is_winner:
-###        agent2.reward(agent1.score)
-###    else:
-###        agent2.punish(agent1.score)
-
     return game
 
 def create_agent(start_weights_file, name):
@@ -92,4 +82,9 @@ def train(agent1stratfile, agent2stratfile, epochs=1000, epoch_checkpoint=None):
 
         agent1.reset()
         agent2.reset()
+
+    # save final output, no sense in running last epoch_checkpoint times if not
+    # ever saved
+    save_checkpoint(agent1, epoch, start_time)
+    save_checkpoint(agent2, epoch, start_time)
 
