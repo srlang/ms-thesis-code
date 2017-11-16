@@ -49,6 +49,7 @@ class CribbageAgent(object):
         self._peg_cards_left = []
         # force initialization for _name field for debugging purposes
         self._name = ''
+        self.name = ''
         self.is_dealer = False
         self.is_winner = False
         self.hand = []
@@ -90,6 +91,7 @@ class CribbageAgent(object):
             PD('exiting with to_play=%d' % to_play, _METHOD)
             return to_play
         else:
+            PD('cannot peg more, raising GoException', _METHOD)
             raise GoException
 
     def has_peg_cards_left(self):
@@ -99,6 +101,12 @@ class CribbageAgent(object):
 
     def can_peg_more(self, cards_played):
         # tested
+        _METHOD = 'Agent.can_peg_more'
+        PD('has_peg_cards_left = %s' % self.has_peg_cards_left(), _METHOD)
+        #min_card_value = min(hand_values(self._peg_cards_left))
+        #remaining = 31 - sum([card_value(card) for card in cards_played])
+        #PD('min card value (%d) <= remaining(%d) : %s' % (min_card_value, remaining, min_card_value <= remaining), _METHOD)
+        #PD('returning: %s' % (self.has_peg_cards_left() and min_card_value <= remaining), _METHOD)
         return self.has_peg_cards_left() and \
                 (min(hand_values(self._peg_cards_left)) <=
                  31 - sum([card_value(card) for card in cards_played]))
@@ -219,7 +227,6 @@ class SmartCribbageAgent(CribbageAgent):
         PD('sorted cards: %s' % str(self.hand), _METHOD)
         S = hand_evaluator(self.hand, self.strategies)
         self._tmp_S = S
-        #weights = weights_record.weights(num_strategies)
         weights = self.retrieve_weights(opponent_score)
         self.add_to_visited_path(opponent_score)
         PD('weights: %s' % str(weights), _METHOD)
@@ -281,7 +288,7 @@ class SmartCribbageAgent(CribbageAgent):
         m = self.score
         o = opponent_score
         d = int(self.is_dealer)
-        num_strats = len(self._strat_names)
+        num_strats = max(len(self._strat_names),1)
         weights = self.weights[m][o][d]
         if weights is None or weights == []:
             weights = [1/num_strats] * num_strats

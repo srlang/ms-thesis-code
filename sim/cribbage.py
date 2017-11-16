@@ -366,6 +366,8 @@ class CribbageGame(object):
                     PD('>> forcefully swapping here to ensure correct path', 'peg()')
                     player, observer = observer, player
                     go = True
+            except Exception as e:
+                PD('> Exception encountered: ' + str(e), 'peg()')
 
             # swap who has the play, iff there is not a go
             if not go:
