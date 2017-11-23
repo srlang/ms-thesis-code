@@ -13,6 +13,27 @@ Ideas:
 This can be left for later
 '''
 
+def read_weights_file(filename):
+    csv_table = read_csv(filename, sep=' ')
+
+    dealer = csv_table[csv_table['dealer'] == 0]
+    pone = csv_table[csv_table['dealer'] == 1]
+
+    return dealer,pone
+
+def weights_tabled(table, num_weights, dimensions=(121,121)):
+    dims = tuple([num_weights] + list(dimensions))
+    ret = np.zeros(dims)
+
+    for _i,row in table.iterrows():
+        m = int(row.iloc[0])
+        o = int(row.iloc[1])
+        #d = int(row.iloc[2])
+        for weight in range(num_weights):
+            ret[weight,m,o] = row.iloc[weight+3]
+
+    return ret
+
 def plot_single_strategy(file_name, strat_name):
     # TODO
     pass
