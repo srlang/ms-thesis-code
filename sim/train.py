@@ -5,6 +5,7 @@ from pandas         import  read_csv
 from sqlalchemy     import  create_engine
 from sqlalchemy.exc import  SQLAlchemyError
 from sqlalchemy.orm import  sessionmaker
+from time           import  gmtime, strftime
 
 from agent          import  SmartCribbageAgent
 from cribbage       import  CribbageGame
@@ -70,6 +71,7 @@ def save_checkpoint(agent, epoch, start_time_str, checkpoints_dir='./checkpoints
 def train(agent1stratfile, agent2stratfile, epochs=1000, epoch_checkpoint=None):
     if epoch_checkpoint is None:
         epoch_checkpoint = max(int(epochs / 100), 1)
+    start_time = strftime('%Y%m%d-%H%M%S', gmtime())
     agent1, agent2 = create_agents(agent1stratfile, agent2stratfile)
 
     for epoch in range(epochs):
@@ -88,3 +90,19 @@ def train(agent1stratfile, agent2stratfile, epochs=1000, epoch_checkpoint=None):
     save_checkpoint(agent1, epoch, start_time)
     save_checkpoint(agent2, epoch, start_time)
 
+if __name__ == '__main__':
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument('agent1_file', help="filename for agent1's weights")
+    parser.add_argument('agent2_file', help="filename for agent2's weights")
+    parser.add_argument('-v', '--verbose', help='verbose mode?', action='store_true')
+    parser.add_argument('-e', '--epochs', help='number of epochs(games) to play for training',
+            type=int, default=1000)
+    parser.add_argument('-c', '--checkpoint', help='number of epochs to checkpoint at',
+            type=int, default=None)
+    # ...
+    args = parser.parse_args()
+
+    PD('training (%s) against (%s) for (%d) epochs and checkpointint after every (%s)' %\
+            (args.agent1_file, args.agent2_file, args.epochs, str(args.checkpoint)))
+    train(args.agent1_file, args.agent2_file, args.epochs, args.checkpoint)
