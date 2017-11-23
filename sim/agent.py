@@ -196,8 +196,9 @@ class SmartCribbageAgent(CribbageAgent):
         self._tmp_p = None
         self._tmp_S = None
         self.game_weights_path = []
-        self._strat_names = []
-        self.weights = blank_weights()
+        # Don't reset weights or strategy names. Those need to stay.
+        #self._strat_names = []
+        #self.weights = blank_weights()
 
     def _assign_strategies(self, strats_str_list):
         self._strat_names = strats_str_list
