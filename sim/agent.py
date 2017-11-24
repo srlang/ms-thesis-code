@@ -229,7 +229,7 @@ class SmartCribbageAgent(CribbageAgent):
         S = hand_evaluator(self.hand, self.strategies)
         self._tmp_S = S
         weights = self.retrieve_weights(opponent_score)
-        self.add_to_visited_path(opponent_score)
+        #self.add_to_visited_path(opponent_score)
         PD('weights: %s' % str(weights), _METHOD)
         p = matmul(weights,S)
         self._tmp_p = p
@@ -247,7 +247,8 @@ class SmartCribbageAgent(CribbageAgent):
         PD('variance=%f' % variance(p), _METHOD)
         explore_rate = 0.3 - variance(p) # EXPLORE_RATE
         PD('explore_rate=%f' % explore_rate, _METHOD)
-        if explore_rand < explore_rate:
+        explore = explore_rand < explore_rate
+        if explore:
             PD("explore_rand < explore_rate, exploring",_METHOD)
             # explore step, choose randomly according to weights
             # numpy.random.choice(stuff, p=probabilities)
@@ -266,6 +267,7 @@ class SmartCribbageAgent(CribbageAgent):
             index = choice(indices)
             PD('Using %d of available %s' % (index, str(indices)), _METHOD)
 
+        self.add_to_visited_path(opponent_score, explore)
         keep = list(combinations(self.hand, KEEP_AMOUNT))[index]
         toss = [card for card in self.hand if card not in keep]
         PD('exiting with keep=%s, toss=%s' % (keep,toss), _METHOD)
@@ -296,8 +298,8 @@ class SmartCribbageAgent(CribbageAgent):
             self.weights[m][o][d] = weights
         return weights
 
-    def add_to_visited_path(self, opponent_score):
-        self.game_weights_path.append((self.score, opponent_score, self.is_dealer))
+    def add_to_visited_path(self, opponent_score, explore):
+        self.game_weights_path.append((self.score, opponent_score, self.is_dealer, explore))
         pass
 
     '''
@@ -327,7 +329,8 @@ class SmartCribbageAgent(CribbageAgent):
                 % (weights_mod, self.game_weights_path),
                 _METHOD)
         decay = 0.10 # "percent" to decay adjustments at each step back
-        for m,o,d in reversed(self.game_weights_path):
+        # my_score, opp_score, dealer, explore
+        for m,o,d,e in reversed(self.game_weights_path):
             PD('> entering loop with weights_mod=%f' % weights_mod, _METHOD)
             start = self.weights[m][o][d]
             PD('> starting weights = %s' % start, _METHOD)
@@ -335,7 +338,8 @@ class SmartCribbageAgent(CribbageAgent):
             # proportional to inverse square in decrease
             # N.B.: topic for part of thesis background: regularization
             # (of the weights, not the decay of the modifier)
-            if weights_mod < 0:
+            decrease = weights_mod > 0 if e else weights_mod < 0
+            if decrease:
                 mid = [1.0 / (x * x) * (1.0 + weights_mod) for x in start]
             else:
                 mid = [x * x * (1.0 + weights_mod) for x in start]

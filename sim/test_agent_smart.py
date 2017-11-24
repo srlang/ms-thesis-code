@@ -114,8 +114,8 @@ def test__choose_cards():
     #exp_p = [0.32,0.558, 0.558, 0.558, 0.558, 0.68, 0.558, 0.558, 0.68, 0.68, 0.558, 0.558, 0.68, 0.68, 0.68] 
     exp_p = [1.0, 0.183, 0.183, 0.183, 0.183, 0.0, 0.183, 0.183, 0.0, 0.0, 0.183, 0.183,  0.0,0.0, 0.0]
     exp_S = [[1.0, 0.25, 0.25, 0.25, 0.25, 0.0, 0.25, 0.25, 0.0, 0.0, 0.25, 0.25, 0.0, 0.0, 0.0], [1.0, 0.15, 0.15, 0.15, 0.15, 0.0, 0.15, 0.15, 0.0, 0.0, 0.15, 0.15, 0.0, 0.0, 0.0]]
-    assert exp_p == list(agent._tmp_p)
     assert exp_S == list(agent._tmp_S)
+    assert exp_p == list(agent._tmp_p)
     # TODO: what should the choice made be?
     #assert True
 
@@ -139,22 +139,22 @@ def test_modify_weights():
     input_file = './checkpoints/random_start.txt'
     agent = create_agent(input_file, 'NimiTällä')
     path = [
-                    (0,0,0),
-                    (10, 14, 1),
-                    (20, 19, 0),
-                    (55, 40, 1),
-                    (70, 66, 0),
-                    (90, 77, 1),
-                    (110, 108, 0)
+                    (0,0,0, False),
+                    (10, 14, 1, False),
+                    (20, 19, 0, False),
+                    (55, 40, 1, False),
+                    (70, 66, 0, False),
+                    (90, 77, 1, False),
+                    (110, 108, 0, False)
                     ]
-    original_weights_ref = [agent.weights[m][o][d] for m,o,d in path]
+    original_weights_ref = [agent.weights[m][o][d] for m,o,d,e in path]
     original_weights = deepcopy(original_weights_ref)
     agent.game_weights_path = path
     agent.modify_weights(0.175)
 
     # check that weights "increased"
     for i in range(len(path)):
-        m,o,d = path[i]
+        m,o,d,e = path[i]
         ow = original_weights[i]
 
         maow = max(ow)
@@ -166,13 +166,13 @@ def test_modify_weights():
         assert agent.weights[m][o][d][miow_loc] < miow
 
     # re-save weights
-    original_weights_ref = [agent.weights[m][o][d] for m,o,d in path]
+    original_weights_ref = [agent.weights[m][o][d] for m,o,d,e in path]
     original_weights = deepcopy(original_weights_ref)
     agent.modify_weights(-0.134)
 
     # check that weights "decreased"
     for i in range(len(path)):
-        m,o,d = path[i]
+        m,o,d,e = path[i]
         ow = original_weights[i]
 
         maow = max(ow)
@@ -184,6 +184,53 @@ def test_modify_weights():
         assert agent.weights[m][o][d][miow_loc] > miow
 
     #assert False # Reminder: Uniform weights will not be adjustable
+
+    # now, again for the sake of explorative steps, but in "reverse"
+    path = [
+                    (0,0,0, True),
+                    (10, 14, 1, True),
+                    (20, 19, 0, True),
+                    (55, 40, 1, True),
+                    (70, 66, 0, True),
+                    (90, 77, 1, True),
+                    (110, 108, 0, True)
+                    ]
+    original_weights_ref = [agent.weights[m][o][d] for m,o,d,e in path]
+    original_weights = deepcopy(original_weights_ref)
+    agent.game_weights_path = path
+    agent.modify_weights(-0.175)
+
+    # check that weights "increased"
+    for i in range(len(path)):
+        m,o,d,e = path[i]
+        ow = original_weights[i]
+
+        maow = max(ow)
+        maow_loc = ow.index(maow)
+        assert agent.weights[m][o][d][maow_loc] > maow
+
+        miow = min(ow)
+        miow_loc = ow.index(miow)
+        assert agent.weights[m][o][d][miow_loc] < miow
+
+    # re-save weights
+    original_weights_ref = [agent.weights[m][o][d] for m,o,d,e in path]
+    original_weights = deepcopy(original_weights_ref)
+    agent.modify_weights(0.134)
+
+    # check that weights "decreased"
+    for i in range(len(path)):
+        m,o,d,e = path[i]
+        ow = original_weights[i]
+
+        maow = max(ow)
+        maow_loc = ow.index(maow)
+        assert agent.weights[m][o][d][maow_loc] < maow
+
+        miow = min(ow)
+        miow_loc = ow.index(miow)
+        assert agent.weights[m][o][d][miow_loc] > miow
+
 
 def test__weights_modifier():
     agent = SmartCribbageAgent()
