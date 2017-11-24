@@ -1,5 +1,9 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
+import numpy as np
+import matplotlib.pyplot as plt
+from pandas import read_csv
+
 '''
 Script to be used after a bunch of runs have been made,
 making some plots that could be useful for the thesis.
