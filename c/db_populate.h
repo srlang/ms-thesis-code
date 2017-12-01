@@ -1,16 +1,20 @@
 #ifndef _DB_POPULATE_H
 #define _DB_POPULATE_H
 
+#include <stdlib.h>
 #include <pthread.h>
 #include <sqlite3.h>
 
 #include "cribbage.h"
 #include "score.h"
+#include "utils.h"
 
-//#define DB_MULTI_FILE	1
+#define DB_MULTI_FILE	1
 
-#define DB_FILENAME						"file:tmp_db_c.db"
-#define DB_FILENAME_FORMAT				"file:tmp_db_c_%d.db"
+#define DB_FILENAME						"/tmp/srlang/tmp_db_c.db"
+#define DB_FILENAME_FORMAT				"/tmp/srlang/tmp_db_c_%d.db"
+//#define DB_FILENAME	":memory:"
+//#define DB_FILENAME_FORMAT	":memory:"
 #define DB_OPEN_FLAGS					(SQLITE_OPEN_READWRITE |\
 										SQLITE_OPEN_CREATE |\
 										SQLITE_OPEN_FULLMUTEX)
@@ -20,7 +24,7 @@
 #define TOSS_SORT(w,x,y,z)				qsort(w,x,y,z)
 
 #ifdef DEBUG
-	#define DB_THREAD_COUNT				10
+	#define DB_THREAD_COUNT				4
 #else
 	#define DB_THREAD_COUNT				10
 #endif
@@ -83,5 +87,7 @@ uint8_t kt_valid_next_kt(KeepToss * kt);
 uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KeepTossInfo * kti);
 
 static int kt_sqlite_callback(void * _x, int argc, char ** argv, char ** _y);
+
+void /*inline*/ _kt_mode(Score * mode, Score * vals, int vals_len);
 
 #endif /*_DB_POPULATE_H*/

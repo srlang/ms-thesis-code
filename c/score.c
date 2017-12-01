@@ -126,11 +126,6 @@ Score flush(Hand * hand) {
 }
 
 #ifdef MAIN_SCORE
-#define ASSERT_EQ(x,y,...)	do {\
-		if (x != y) {\
-			PD(__VA_ARGS__);\
-		}\
-	} while (0);
 int main(void) {
 	// suits
 	ASSERT_EQ(0, suit(16), "suits issue 0\n");

@@ -2,7 +2,8 @@
 .PHONY: clean
 
 CC=gcc
-CFLAGS=-Wall --std=c99 -Ofast
+CFLAGS=--std=c99 -g
+#-Ofast -g
 OBJECTS=$(wildcard *.o)
 
 all: $(OBJECTS) enumerate db_populate
@@ -35,3 +36,9 @@ c_populator.tar.gz: *.c *.h Makefile tmp_db_c.db.empty
 
 test_score: score.c
 	${CC} ${CFLAGS} -o test_score score.c cribbage.o -DMAIN_SCORE
+
+test_mem: test_mem.c
+	${CC} ${CFLAGS} -o test_mem test_mem.c
+
+sjob: db_populate
+	srun ../batch_scripts/c_test.sh
