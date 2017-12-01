@@ -26,6 +26,7 @@ from weights                import WeightCoordinate, read_weights
 from utils                  import PD
 
 KEEP_AMOUNT = 4
+REALLY_SMALL_FLOAT = 1e-300
 
 class CribbageAgent(object):
 
@@ -340,7 +341,8 @@ class SmartCribbageAgent(CribbageAgent):
             # (of the weights, not the decay of the modifier)
             decrease = weights_mod > 0 if e else weights_mod < 0
             if decrease:
-                mid = [1.0 / (x * x) * (1.0 + weights_mod) for x in start]
+                # put the max in to make sure we don't run into div by 0 errors
+                mid = [1.0 / max((x * x), REALLY_SMALL_FLOAT) * (1.0 + weights_mod) for x in start]
             else:
                 mid = [x * x * (1.0 + weights_mod) for x in start]
             end = normalize(mid)

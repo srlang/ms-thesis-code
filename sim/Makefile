@@ -1,4 +1,4 @@
-.PHONY: test_train test_rest
+.PHONY: test_train test_rest push
 
 test_files = test_agent.py test_analyze.py test_cribbage__game.py test_cribbage__scoring.py test_records.py test_strategy.py test_strategy2.py test_strategy3.py test_weights.py
 
@@ -15,3 +15,6 @@ test_smart:
 
 test_rest:
 	py.test -v $(test_files)
+
+push:
+	git push hy master && git push gh master

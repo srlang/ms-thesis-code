@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
 from os                     import  listdir
@@ -45,10 +46,10 @@ def weights_tabled(table, num_weights, dimensions=(121,121)):
     return ret
 
 def all_files(file_format, agent_name, date_str, directory='./checkpoints'):
-    regex_base = file_format % (agent_name, date_str, 999)
+    regex_base = file_format % (agent_name, date_str, 999999999999)
     #print('regex_base')
     #print(regex_base)
-    regex = regex_base.replace('999', '.*')
+    regex = regex_base.replace('999999999999', '.*')
     #print('regex')
     #print(regex)
     af = sorted(listdir(directory))
@@ -76,7 +77,9 @@ def plot_single_strategy(file_names, strat_name,
                 ('_%s_' % ('pone' if pone else 'dealer')) +\
                 strat_name + '.png'
 
-        plt.imsave(out_file, t, cmap=color_map)
+        # set vmin/vmax to ensure that colors stay consistent across multiple
+        # runs. we know that this can only be 0-1 because of normalization
+        plt.imsave(out_file, t, cmap=color_map, vmin=0.0, vmax=1.0)
 
     pass
 

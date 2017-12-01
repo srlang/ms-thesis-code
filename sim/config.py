@@ -11,10 +11,10 @@ DEBUG = True
 DB_ENGINE_PREFIX = 'sqlite+pysqlite:///'
 
 if DEBUG:
-    DB_ENGINE = 'sqlite:///:memory:'
-    #DB_ENGINE = 'sqlite+pysqlite:////tmp/tmp_db.db'
-    #DB_FILE = '/tmp/tmp_db.db'
-    #DB_ENGINE = DB_ENGINE_PREFIX + DB_FILE
+    #DB_ENGINE = 'sqlite:///:memory:'
+    DB_ENGINE = 'sqlite+pysqlite:////tmp/tmp_db.db'
+    DB_FILE = '/tmp/tmp_db.db'
+    DB_ENGINE = DB_ENGINE_PREFIX + DB_FILE
     DB_ECHO = False #True
 
     DB_POPULATE_SAVE_INTERVAL = 10
@@ -24,7 +24,8 @@ if DEBUG:
     DB_AGG_REC_REFRESH_MODULO = 128
 else:
     #DB_ENGINE = 'sqlite:///:memory:'
-    DB_FILE = 'tmp_db.db'
+    DB_ENGINE = 'sqlite+pysqlite:////tmp/tmp_db.db'
+    DB_FILE = '/tmp/tmp_db.db'
     DB_ENGINE = DB_ENGINE_PREFIX + DB_FILE
     DB_ECHO = False
 

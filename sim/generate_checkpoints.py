@@ -29,10 +29,27 @@ def random_weights(strats):
     return weights
 
 def sensible_weights(**kwargs):
-    # ignore strats in this scenario
-    #nstarts = len(strats)
-    # TODO
+    # ignore strats as a parameter in this scenario
+    # sensible weights: basically what I think they should be generally speaking
+    # this involves a decent amount of manual creation
+    strats = ALL_STRATEGY_NAMES
+    nstarts = len(strats)
     weights = blank_weights()
+
+    # first half of the game, play conpletely conservatively
+    # [hm_min, hm_avg, hm_med, hm_pos, c_ma, p_max_ag, p_max_mg, p_min_ag]
+    for m in range(0, 61):
+        for o in range(0, 61):
+            # pone
+            weights[m][o][0] = normalize(\
+                    [10, 30, 30, 5, 15, 10, 10, 10]
+                    )
+            # dealer
+            weights[m][o][1] = normalize(\
+                    [10, 30, 30, 5, 00, 10, 10, 10]
+                    )
+    # TODO
+    #weights = blank_weights()
     return weights
 
 def uniform_weights(strats):

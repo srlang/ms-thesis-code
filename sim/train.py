@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
 from os             import  access, mkdir, W_OK
@@ -12,7 +13,7 @@ from cribbage       import  CribbageGame
 from weights        import  WeightCoordinate, create_weight_tables
 from utils          import  PD
 
-CHECKPOINT_FILENAME_FORMAT = 'checkpoint_%s_%s_%d.txt'
+CHECKPOINT_FILENAME_FORMAT = 'checkpoint_%s_%s_%012d.txt'
 
 def play_training_game(agent1, agent2):
     '''
