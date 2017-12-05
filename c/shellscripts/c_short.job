@@ -1,0 +1,11 @@
+#!/bin/bash
+#SBATCH --job-name=srlang_cribbage_c_short
+#SBATCH -o c_db_pop_short.out 
+#SBATCH -p short
+#SBATCH -c 28
+#SBATCH -t 15:00:00
+#SBATCH --mem-per-cpu=2048
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=sean.lang@cs.helsinki.fi
+
+srun ~/batch_scripts/c_short.sh
