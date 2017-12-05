@@ -3,9 +3,9 @@
 
 #include <stdio.h>
 
-#define DEBUG	1
+//#define DEBUG	1
 
-/*
+	/*
 #ifdef DEBUG
 	#if DEBUG
 	#define PD(...)		fprintf(stderr, __VA_ARGS__)
@@ -13,11 +13,9 @@
 	#define PD(...)		// do nothing
 	#endif
 #else
-*/
+	*/
 	#define PD(...)		// do nothing
-/*
-#endif
-*/
+//#endif
 
 #define MAX(x,y)		((x) > (y) ? (x) : (y))
 

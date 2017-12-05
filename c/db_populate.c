@@ -475,12 +475,21 @@ KeepToss * kt_next(KeepToss * kt) {
 		// implement integer increment base 52 on KeepToss->keep,toss as a dealt
 		// hand
 		// take advantage of the fact that C treats memory like a single tape
-		uint8_t carry = 1;
-		for (uint8_t i = CARDS_IN_KEEP_TOSS_INCREMENT-1; i >= 0 && carry; i--) {
-			_kt_next_object->keep[i] += carry;
-			carry = _kt_next_object->keep[i] >= 52;
-			_kt_next_object->keep[i] %= CRIBBAGE_HAND_INCREMENT_BASE;
-		}
+		do {	
+			uint8_t carry = 1;
+			for (uint8_t i = CARDS_IN_KEEP_TOSS_INCREMENT-1; i >= 0 && carry; i--) {
+				_kt_next_object->keep[i] += carry;
+				carry = _kt_next_object->keep[i] >= 52;
+				_kt_next_object->keep[i] %= CRIBBAGE_HAND_INCREMENT_BASE;
+			}
+		} while (!all_increasing(_kt_next_object));
+		// hand integer increment not necessary.
+		// later on down the line, these cards are shuffled around anyways,
+		// so order doesn't matter
+		// therefore, we can keep the cards in numerical order and simply
+		// walk through all possibilities where hand[0] < hand[1] < hand[2]...
+		// however, we will re-use the increment code an
+		// TODO
 		// zero out the KeepToss->tosd,cut fields
 		// (this can be handled by increment later and a validity check after a few
 		// steps)
@@ -510,6 +519,18 @@ KeepToss * kt_next(KeepToss * kt) {
 
 	PD("\t\texiting\n");
 	return kt;
+}
+
+int all_increasing(KeepToss * kt) {
+	// rewrite explicitly instead of through loop to avoid:
+	// 	1. compiler warning (annoying)
+	// 	2. making compiler have to optimize
+	// 	3. allow explicit fast-circuiting
+	return kt->keep[0] < kt->keep[1] &&
+		kt->keep[1] < kt->keep[2] &&
+		kt->keep[2] < kt->keep[3] &&
+		kt->keep[3] < kt->toss[0] &&
+		kt->toss[0] < kt->toss[1];
 }
 
 

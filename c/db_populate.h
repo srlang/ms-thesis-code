@@ -24,9 +24,9 @@
 #define TOSS_SORT(w,x,y,z)				qsort(w,x,y,z)
 
 #ifdef DEBUG
-	#define DB_THREAD_COUNT				4
+	#define DB_THREAD_COUNT				64 //should probably be 32
 #else
-	#define DB_THREAD_COUNT				10
+	#define DB_THREAD_COUNT				56
 #endif
 #define CARDS_IN_KEEP_TOSS_MODIFIABLE	(4+2+2)
 #define CARDS_IN_KEEP_TOSS_INCREMENT	(4+2)
@@ -45,7 +45,7 @@ typedef struct keep_toss_s {
 #ifdef DEBUG
 	#define KT_LAST_FIRST_CARD				1
 #else
-	#define KT_LAST_FIRST_CARD				(51-2-4)
+	#define KT_LAST_FIRST_CARD				46
 #endif
 
 typedef struct KeepTossInformation_s {
@@ -89,5 +89,7 @@ uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KeepTossInfo * kti);
 static int kt_sqlite_callback(void * _x, int argc, char ** argv, char ** _y);
 
 void /*inline*/ _kt_mode(Score * mode, Score * vals, int vals_len);
+
+int all_increasing(KeepToss * kt);
 
 #endif /*_DB_POPULATE_H*/
