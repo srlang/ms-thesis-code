@@ -19,10 +19,12 @@ from cribbage               import score_hand,\
                                     hand_values,\
                                     card_value,\
                                     GoException
+from records                import input_PlayedHandRecord
 from strategy2              import _get_all_indices
 import strategy3 as strategy_module
 from strategy3              import hand_evaluator
 from weights                import WeightCoordinate, read_weights
+
 from utils                  import PD
 
 KEEP_AMOUNT = 4
@@ -147,6 +149,8 @@ class CribbageAgent(object):
         else:
             return 0
 
+    def record_pegging_round(self, gained, given):
+        pass
     # TODO
 
 '''
@@ -379,6 +383,11 @@ class SmartCribbageAgent(CribbageAgent):
         #ret = filter(lambda line: not re.match(r'^\s*$', line), ret)
         ret = sub(r'(\n){2,}', '\n', ret)
         return header_ln + ret
+
+    def record_pegging_round(self, gained, given):
+        PD('entering', 'SmartCribbageAgent.record_pegging_round')
+        input_PlayedHandRecord(self.hand, gained, given)
+        PD('exiting', 'SmartCribbageAgent.record_pegging_round')
 
 def normalize(vector):
     return list(sknorm([vector], norm='l1')[0])

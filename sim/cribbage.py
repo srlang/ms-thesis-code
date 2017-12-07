@@ -337,6 +337,11 @@ class CribbageGame(object):
 
         PD("begin", "peg()")
 
+        PD('saving scores for records later', 'peg()')
+        pone_score_before = self.pone.score
+        dealer_score_before = self.dealer.score
+
+
         while self._cards_to_be_played and not self.game_finished:
             PD('begin loop with agent(%s)' % player.name, 'peg()')
             last_31 = False
@@ -396,6 +401,14 @@ class CribbageGame(object):
             # (which is at this point, thanks to the swap earlier, the observer)
             PD('game has finished, awarding last card point', 'peg()')
             observer.score += 1 # last card point
+
+        # update records
+        PD('updating pegging records', 'peg()')
+        # TODO
+        pone_diff = self.pone.score - pone_score_before
+        dealer_diff = self.dealer.score - dealer_score_before
+        self.pone.record_pegging_round(pone_diff, dealer_diff)
+        self.dealer.record_pegging_round(dealer_diff, pone_diff)
 
         PD('end', 'peg()')
         pass
