@@ -11,8 +11,8 @@
 
 #define DB_MULTI_FILE	1
 
-#define DB_FILENAME						"/tmp/srlang/tmp_db_c.db"
-#define DB_FILENAME_FORMAT				"/tmp/srlang/tmp_db_c_%d.db"
+#define DB_FILENAME						"/tmp/srlang_ind/tmp_db_c.db"
+#define DB_FILENAME_FORMAT				"/tmp/srlang_ind/tmp_db_c_%d.db"
 //#define DB_FILENAME	":memory:"
 //#define DB_FILENAME_FORMAT	":memory:"
 #define DB_OPEN_FLAGS					(SQLITE_OPEN_READWRITE |\
@@ -91,5 +91,8 @@ static int kt_sqlite_callback(void * _x, int argc, char ** argv, char ** _y);
 void /*inline*/ _kt_mode(Score * mode, Score * vals, int vals_len);
 
 int all_increasing(KeepToss * kt);
+
+//long int id(int k0, int k1, int k2, int k3, int t0, int t1);
+long int id(KeepToss * kt);
 
 #endif /*_DB_POPULATE_H*/

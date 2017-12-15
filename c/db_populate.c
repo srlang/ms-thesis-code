@@ -534,6 +534,16 @@ int all_increasing(KeepToss * kt) {
 }
 
 
+//long int id(int k0, int k1, int k2, int k3, int t0, int t1) {
+long int id(KeepToss * kt) {
+	return 	kt->keep[0]	* 10000000000L
+		+ kt->keep[1]	* 100000000L
+		+ kt->keep[2]	* 1000000L
+		+ kt->keep[3]	* 10000L
+		+ kt->toss[0]	* 100L
+		+ kt->toss[1]	* 1L;
+}
+
 /*
  * Execute the SQL statement required to insert a single database row into
  * the table.
@@ -544,11 +554,13 @@ int all_increasing(KeepToss * kt) {
  */
 #define SQL_FORMAT	\
 	"INSERT INTO keep_throw_stats "\
-	"(kcard0, kcard1, kcard2, kcard3, "\
+	"(id, "\
+		"kcard0, kcard1, kcard2, kcard3, "\
 		"tcard0, tcard1, "\
 		"kmin, kmax, kmed, kavg, kmod, "\
 		"tmin, tmax, tmed, tavg, tmod) "\
-	"VALUES (%d, %d, %d, %d, "\
+	"VALUES (%ld, "\
+		"%d, %d, %d, %d, "\
 		"%d, %d, "\
 		"%d, %d, %f, %f, %d, "\
 		"%d, %d, %f, %f, %d);-- "
@@ -560,7 +572,9 @@ uint8_t kt_db_add(sqlite3 * db, KeepToss * kt, KeepTossInfo * kti) {
 	
 	// generate sql statement
 	char sql[2048];
-	sprintf(sql, SQL_FORMAT, kt->keep[0], kt->keep[1], kt->keep[2], kt->keep[3],
+	sprintf(sql, SQL_FORMAT,
+			id(kt),
+			kt->keep[0], kt->keep[1], kt->keep[2], kt->keep[3],
 			kt->toss[0], kt->toss[1],
 			kti->kmin, kti->kmax, kti->kmed, kti->kavg, kti->kmod,
 			kti->tmin, kti->tmax, kti->tmed, kti->tavg, kti->tmod);
