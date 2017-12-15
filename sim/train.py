@@ -3,6 +3,7 @@
 
 from os             import  access, mkdir, W_OK
 from pandas         import  read_csv
+from random         import  sample
 from sqlalchemy     import  create_engine
 from sqlalchemy.exc import  SQLAlchemyError
 from sqlalchemy.orm import  sessionmaker
@@ -91,11 +92,47 @@ def train(agent1stratfile, agent2stratfile, epochs=1000, epoch_checkpoint=None):
     save_checkpoint(agent1, epoch, start_time)
     save_checkpoint(agent2, epoch, start_time)
 
+def train_pegging(rounds=1000):
+    _METHOD = 'train_pegging'
+    PD('entering', _METHOD)
+    agent1 = SmartCribbageAgent()
+    agent2 = SmartCribbageAgent()
+    game = CribbageGame(agent1, agent2)
+    game.pone, game.dealer = agent1, agent2
+    # randomly assign pone and dealer
+    for i in range(rounds):
+        PD('\tRound %d' % (i+1), _METHOD)
+        # set scores to 0 so there isn't ever a early stopping winning condition
+        PD('\t\tScores reset', _METHOD)
+        game.pone.score = 0
+        game.dealer.score = 0
+
+        # manually deal out cards (randomly)
+        PD('\t\tDealing out cards', _METHOD)
+        all_cards = sample(range(52), 8)
+        game.pone.hand = all_cards[:4]
+        PD('\t\t\tPone hand: %s' % str(game.pone.hand))
+        game.dealer.hand = all_cards[4:]
+        PD('\t\t\tDealer hand: %s' % str(game.dealer.hand))
+
+        # play the pegging round
+        PD('\t\tPlaying the actual pegging round', _METHOD)
+        game.peg()
+
+        # randomly assign agents as pone or dealer;
+        # really just cycle to keep even distribution
+        PD('\t\tSwapping dealer/pone', _METHOD)
+        game.pone, game.dealer = game.dealer, game.pone
+        pass
+    PD('exiting', _METHOD)
+
+OPERATIONS = ['game', 'peg']
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('agent1_file', help="filename for agent1's weights")
-    parser.add_argument('agent2_file', help="filename for agent2's weights")
+    parser.add_argument('operation', help='what we are training', choices=OPERATIONS)
+    parser.add_argument('-a', '--agent1file', help="filename for agent1's weights", default='')
+    parser.add_argument('-b', '--agent2file', help="filename for agent2's weights", default='')
     parser.add_argument('-v', '--verbose', help='verbose mode?', action='store_true')
     parser.add_argument('-e', '--epochs', help='number of epochs(games) to play for training',
             type=int, default=1000)
@@ -104,6 +141,9 @@ if __name__ == '__main__':
     # ...
     args = parser.parse_args()
 
-    PD('training (%s) against (%s) for (%d) epochs and checkpointint after every (%s)' %\
-            (args.agent1_file, args.agent2_file, args.epochs, str(args.checkpoint)))
-    train(args.agent1_file, args.agent2_file, args.epochs, args.checkpoint)
+    if args.operation == 'game':
+        PD('training (%s) against (%s) for (%d) epochs and checkpointint after every (%s)' %\
+                (args.agent1file, args.agent2file, args.epochs, str(args.checkpoint)))
+        train(args.agent1file, args.agent2file, args.epochs, args.checkpoint)
+    elif args.operation == 'peg':
+        train_pegging(args.epochs)
