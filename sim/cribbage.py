@@ -442,7 +442,7 @@ class CribbageGame(object):
             pass
 
     def deal_cards(self):
-        all_cards = sample(range(0,51), 13)
+        all_cards = sample(range(52), 13)
         self.dealer.hand = all_cards[0:6]
         self.pone.hand = all_cards[6:-1]
         self.cut_card = all_cards[-1]
