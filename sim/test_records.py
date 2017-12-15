@@ -100,13 +100,19 @@ def test__populate_keep_throw_statistics():
         PD('Error: %s' % str(e))
         assert False
 
-
 def test_populate_keep_throw_statistics():
     # Untestable unless I figure out a way to make the method have a start/end
     # point.
     #assert False
     pass
 
+def test_KeepThrowStatistics_generate_id():
+    id_ = KeepThrowStatistics.generate_id
+    assert id_([1,2,3,4], [5,6]) == 10203040506
+    assert id_([10,2,3,4], [11,22]) == 100203041122
+    assert id_([10,12,14,15],[0, 2]) == 101214150002
+
 
 if __name__ == '__main__':
-    test_input_PlayedHandRecord()
+    #test_input_PlayedHandRecord()
+    test_KeepThrowStatistics_generate_id()

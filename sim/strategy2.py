@@ -37,12 +37,7 @@ def _possible_keep_toss_tuple_list(cards):
 def _retrieve_hand_statistics(kt_tuple, session=session):
     k,t = kt_tuple
     q = session.query(KeepThrowStatistics).filter_by(\
-            kcard0=k[0],\
-            kcard1=k[1],\
-            kcard2=k[2],\
-            kcard3=k[3],\
-            tcard0=t[0],\
-            tcard1=t[1])
+            id=KeepThrowstatistics.generate_id(k, t))
     return q.first() #one_or_none()
 
 def possible_KeepThrowStatistics(cards):

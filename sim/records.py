@@ -265,7 +265,6 @@ class RawHandStatistics(Base):
     mod = Column(Integer)
 
 
-
 class KeepThrowStatistics(Base):
 
     # This table's statistics deal only with the counting phase of the game.
@@ -300,6 +299,15 @@ class KeepThrowStatistics(Base):
     tmed = Column(Float)
     tavg = Column(Float)
     tmod = Column(Integer)
+
+    #@static_method
+    def generate_id(keep, toss):
+        return  keep[0] * 10000000000 +\
+                keep[1] * 100000000 +\
+                keep[2] * 1000000 +\
+                keep[3] * 10000 +\
+                toss[0] * 100 +\
+                toss[1] * 1;
 
 def populator_process_method(dealt_hand):
     # Times:
