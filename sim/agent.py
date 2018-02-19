@@ -19,6 +19,8 @@ from cribbage               import score_hand,\
                                     hand_values,\
                                     card_value,\
                                     GoException
+from config                 import WEIGHTS_MODIFIER_STEP_DECAY,\
+                                    WEIGHTS_MODIFIER_SCALING_FACTOR
 from records                import input_PlayedHandRecord
 from strategy2              import _get_all_indices
 import strategy3 as strategy_module
@@ -78,8 +80,6 @@ class CribbageAgent(object):
 
     def _choose_cards(self, **kwargs):
         # default behavior: return (essentially) random 2 cards
-        # TODO: incorporate some percentage-based decision making
-        #   this will go in SmartCribbageAgent
         return deepcopy(self.hand[:4]), deepcopy(self.hand[-2:])
 
     def next_peg_card(self, cards_played, go=False):
@@ -215,6 +215,8 @@ class SmartCribbageAgent(CribbageAgent):
         # Basic idea for this: greedy choose next card that maximizes next
         #   possible score
         # Tie goes to the first card to be found with that maximum
+        # TODO: make tie go to the last (highest value)
+        #   highest value helps avoid a potential go later
         max_score = 0
         ret_card = valid_cards[0]
         for card in valid_cards:
@@ -228,7 +230,6 @@ class SmartCribbageAgent(CribbageAgent):
         # Return keep,toss tuple. Do nothing else.
         _METHOD = 'SmartCribbageAgent._choose_cards'
         # using self.hand[0:5]
-        # TODO
         self.hand = sorted(self.hand)
         PD('sorted cards: %s' % str(self.hand), _METHOD)
         S = hand_evaluator(self.hand, self.strategies)
@@ -239,7 +240,6 @@ class SmartCribbageAgent(CribbageAgent):
         p = matmul(weights,S)
         self._tmp_p = p
         PD('P=%s' % str(p), _METHOD)
-        # v TODO: HOW DO WE DECIDE?????
         # TODO: need to decide to be able to test this method and to test training
         # temporary decision:
         #   EXPLORE_RATE% chance of picking randomly according to existing weights
@@ -253,12 +253,14 @@ class SmartCribbageAgent(CribbageAgent):
         explore_rate = 0.3 - variance(p) # EXPLORE_RATE
         PD('explore_rate=%f' % explore_rate, _METHOD)
         explore = explore_rand < explore_rate
+        action = None
         if explore:
             PD("explore_rand < explore_rate, exploring",_METHOD)
             # explore step, choose randomly according to weights
             # numpy.random.choice(stuff, p=probabilities)
             p_choice = choice(len(p), p=normalize(p)) # fix params
             index = p_choice
+            action = index
             PD("exploring to use index=%d" % index, _METHOD)
         else:
             PD('exploration not in the cards this time, using largest possible probability', _METHOD)
@@ -270,9 +272,11 @@ class SmartCribbageAgent(CribbageAgent):
             # numpy choice also allows uniform choice
             indices = _get_all_indices(p, max(p))
             index = choice(indices)
+            action = index
             PD('Using %d of available %s' % (index, str(indices)), _METHOD)
 
-        self.add_to_visited_path(opponent_score, explore)
+        # path is (state, action), where state is (MyScore,OppScore,Dealer?)
+        self.add_to_visited_path(opponent_score, action)
         keep = list(combinations(self.hand, KEEP_AMOUNT))[index]
         toss = [card for card in self.hand if card not in keep]
         PD('exiting with keep=%s, toss=%s' % (keep,toss), _METHOD)
@@ -303,8 +307,8 @@ class SmartCribbageAgent(CribbageAgent):
             self.weights[m][o][d] = weights
         return weights
 
-    def add_to_visited_path(self, opponent_score, explore):
-        self.game_weights_path.append((self.score, opponent_score, self.is_dealer, explore))
+    def add_to_visited_path(self, opponent_score, action):
+        self.game_weights_path.append((self.score, opponent_score, self.is_dealer, action))
         pass
 
     '''
@@ -333,25 +337,26 @@ class SmartCribbageAgent(CribbageAgent):
         PD('entering with weights_mod=%f, path=%s'\
                 % (weights_mod, self.game_weights_path),
                 _METHOD)
-        decay = 0.10 # "percent" to decay adjustments at each step back
+        #decay = 0.10 # "percent" to decay adjustments at each step back
+        decay = WEIGHTS_MODIFIER_STEP_DECAY
         # my_score, opp_score, dealer, explore
-        for m,o,d,e in reversed(self.game_weights_path):
+        for m,o,d,a in reversed(self.game_weights_path):
             PD('> entering loop with weights_mod=%f' % weights_mod, _METHOD)
             start = self.weights[m][o][d]
             PD('> starting weights = %s' % start, _METHOD)
-            # proportional to the square in increase
-            # proportional to inverse square in decrease
             # N.B.: topic for part of thesis background: regularization
             # (of the weights, not the decay of the modifier)
-            decrease = weights_mod > 0 if e else weights_mod < 0
-            if decrease:
-                # put the max in to make sure we don't run into div by 0 errors
-                mid = [1.0 / max((x * x), REALLY_SMALL_FLOAT) * (1.0 + weights_mod) for x in start]
-            else:
-                mid = [x * x * (1.0 + weights_mod) for x in start]
-            end = normalize(mid)
+
+            # adjust the action weight by the modifier
+            # 1 + weights_mod will scale weight down if wm is negative,
+            #   and up if wm is positive
+            start[a] *= (1.0 + weights_mod)
+
+            # normalize vector
+            end = normalize(start)
             self.weights[m][o][d] = end
             PD('> ending weights = %s' % end, _METHOD)
+
             weights_mod *= (1.0 - decay) # allow for decaying return values
             # because early points should be punished less severely since more
             # possible outcomes from that position
@@ -359,6 +364,7 @@ class SmartCribbageAgent(CribbageAgent):
 
     def _weights_modifier(self, other_agent_score):
         MAX_SCORE = 121
+        wm_scaling_factor = WEIGHTS_MODIFIER_SCALING_FACTOR
         diff = min(self.score, MAX_SCORE) - min(other_agent_score, MAX_SCORE)
         return diff / MAX_SCORE # scale to percentage of points in a game
         #question for later: 120 or 121?

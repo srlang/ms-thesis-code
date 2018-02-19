@@ -139,31 +139,32 @@ def test_modify_weights():
     input_file = './checkpoints/random_start.txt'
     agent = create_agent(input_file, 'NimiTällä')
     path = [
-                    (0,0,0, False),
-                    (10, 14, 1, False),
-                    (20, 19, 0, False),
-                    (55, 40, 1, False),
-                    (70, 66, 0, False),
-                    (90, 77, 1, False),
-                    (110, 108, 0, False)
+                    (0,0,0, 0),
+                    (10, 14, 1, 1),
+                    (20, 19, 0, 2),
+                    (55, 40, 1, 3),
+                    (70, 66, 0, 4),
+                    (90, 77, 1, 5),
+                    (110, 108, 0, 6)
                     ]
-    original_weights_ref = [agent.weights[m][o][d] for m,o,d,e in path]
+    original_weights_ref = [agent.weights[m][o][d] for m,o,d,a in path]
     original_weights = deepcopy(original_weights_ref)
     agent.game_weights_path = path
     agent.modify_weights(0.175)
 
     # check that weights "increased"
     for i in range(len(path)):
-        m,o,d,e = path[i]
+        m,o,d,a = path[i]
         ow = original_weights[i]
 
-        maow = max(ow)
-        maow_loc = ow.index(maow)
-        assert agent.weights[m][o][d][maow_loc] > maow
-
-        miow = min(ow)
-        miow_loc = ow.index(miow)
-        assert agent.weights[m][o][d][miow_loc] < miow
+        # make sure the non-taken actions are scaled down
+        for j in range(len(ow)):
+            if j == a:
+                # make sure the action is rewarded
+                assert agent.weights[m][o][d][j] > ow[j]
+            else:
+                # make sure the action is less weighted
+                assert agent.weights[m][o][d][j] < ow[j]
 
     # re-save weights
     original_weights_ref = [agent.weights[m][o][d] for m,o,d,e in path]
@@ -172,65 +173,17 @@ def test_modify_weights():
 
     # check that weights "decreased"
     for i in range(len(path)):
-        m,o,d,e = path[i]
+        m,o,d,a = path[i]
         ow = original_weights[i]
 
-        maow = max(ow)
-        maow_loc = ow.index(maow)
-        assert agent.weights[m][o][d][maow_loc] < maow
-
-        miow = min(ow)
-        miow_loc = ow.index(miow)
-        assert agent.weights[m][o][d][miow_loc] > miow
-
-    #assert False # Reminder: Uniform weights will not be adjustable
-
-    # now, again for the sake of explorative steps, but in "reverse"
-    path = [
-                    (0,0,0, True),
-                    (10, 14, 1, True),
-                    (20, 19, 0, True),
-                    (55, 40, 1, True),
-                    (70, 66, 0, True),
-                    (90, 77, 1, True),
-                    (110, 108, 0, True)
-                    ]
-    original_weights_ref = [agent.weights[m][o][d] for m,o,d,e in path]
-    original_weights = deepcopy(original_weights_ref)
-    agent.game_weights_path = path
-    agent.modify_weights(-0.175)
-
-    # check that weights "increased"
-    for i in range(len(path)):
-        m,o,d,e = path[i]
-        ow = original_weights[i]
-
-        maow = max(ow)
-        maow_loc = ow.index(maow)
-        assert agent.weights[m][o][d][maow_loc] > maow
-
-        miow = min(ow)
-        miow_loc = ow.index(miow)
-        assert agent.weights[m][o][d][miow_loc] < miow
-
-    # re-save weights
-    original_weights_ref = [agent.weights[m][o][d] for m,o,d,e in path]
-    original_weights = deepcopy(original_weights_ref)
-    agent.modify_weights(0.134)
-
-    # check that weights "decreased"
-    for i in range(len(path)):
-        m,o,d,e = path[i]
-        ow = original_weights[i]
-
-        maow = max(ow)
-        maow_loc = ow.index(maow)
-        assert agent.weights[m][o][d][maow_loc] < maow
-
-        miow = min(ow)
-        miow_loc = ow.index(miow)
-        assert agent.weights[m][o][d][miow_loc] > miow
-
+        # make sure the non-taken actions are scaled up
+        for j in range(len(ow)):
+            if j == a:
+                # make sure the action is punished
+                assert agent.weights[m][o][d][j] < ow[j]
+            else:
+                # make sure the action is more weighted
+                assert agent.weights[m][o][d][j] > ow[j]
 
 def test__weights_modifier():
     agent = SmartCribbageAgent()
