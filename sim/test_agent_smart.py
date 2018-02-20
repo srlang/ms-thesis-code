@@ -3,7 +3,8 @@
 from copy       import  deepcopy
 from itertools  import  combinations
 
-from agent      import  SmartCribbageAgent
+from agent      import  SmartCribbageAgent,\
+                        action_indices
 from cribbage   import  htoc_str, htoc, GoException
 from strategy3  import  hand_max_avg, hand_max_poss
 from records    import  create_tables,\
@@ -139,13 +140,13 @@ def test_modify_weights():
     input_file = './checkpoints/random_start.txt'
     agent = create_agent(input_file, 'NimiTällä')
     path = [
-                    (0,0,0, 0),
-                    (10, 14, 1, 1),
-                    (20, 19, 0, 2),
-                    (55, 40, 1, 3),
-                    (70, 66, 0, 4),
-                    (90, 77, 1, 5),
-                    (110, 108, 0, 6)
+                    (0,0,0, [0, 7]),
+                    (10, 14, 1, [1, 2]),
+                    (20, 19, 0, [2,5,3]),
+                    (55, 40, 1, [1,2,3]),
+                    (70, 66, 0, [1]),
+                    (90, 77, 1, [4,3]),
+                    (110, 108, 0, [6])
                     ]
     original_weights_ref = [agent.weights[m][o][d] for m,o,d,a in path]
     original_weights = deepcopy(original_weights_ref)
@@ -159,7 +160,7 @@ def test_modify_weights():
 
         # make sure the non-taken actions are scaled down
         for j in range(len(ow)):
-            if j == a:
+            if j in a:
                 # make sure the action is rewarded
                 assert agent.weights[m][o][d][j] > ow[j]
             else:
@@ -178,7 +179,7 @@ def test_modify_weights():
 
         # make sure the non-taken actions are scaled up
         for j in range(len(ow)):
-            if j == a:
+            if j in a:
                 # make sure the action is punished
                 assert agent.weights[m][o][d][j] < ow[j]
             else:
@@ -327,3 +328,19 @@ def test_next_peg_card():
     cards_played = [37, 38, 39]
     card = agent.next_peg_card(cards_played)
     assert card == 1
+
+def test_action_indices():
+    S = [ #  0  1  2  3  4  5
+            [1, 2, 3, 4, 5, 6],
+            [6, 5, 4, 3, 2, 1],
+            [0, 1, 2, 2, 1, 0],
+            [4, 5, 6, 6, 5, 4],
+            [3, 2, 1, 1, 2, 3],
+            [6, 5, 4, 4, 5, 6],
+        ]
+    assert action_indices(S, 0, lower_bound_pct=0.10, max_count_pct=0.34) == [1, 5]
+    assert action_indices(S, 1, lower_bound_pct=0.10, max_count_pct=0.34) == [1, 3]
+    assert action_indices(S, 2, lower_bound_pct=0.10, max_count_pct=0.34) == [3]
+    assert action_indices(S, 3, lower_bound_pct=0.50, max_count_pct=0.34) == [3, 0]
+    assert action_indices(S, 4, lower_bound_pct=0.10, max_count_pct=0.34) == [0, 3]
+    assert action_indices(S, 5, lower_bound_pct=0.10, max_count_pct=0.34) == [0, 5]

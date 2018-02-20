@@ -20,7 +20,9 @@ from cribbage               import score_hand,\
                                     card_value,\
                                     GoException
 from config                 import WEIGHTS_MODIFIER_STEP_DECAY,\
-                                    WEIGHTS_MODIFIER_SCALING_FACTOR
+                                    WEIGHTS_MODIFIER_SCALING_FACTOR,\
+                                    ACTION_LOWER_BOUND_PCT,\
+                                    ACTION_MAX_COUNT_PCT
 from records                import input_PlayedHandRecord
 from strategy2              import _get_all_indices
 import strategy3 as strategy_module
@@ -253,14 +255,14 @@ class SmartCribbageAgent(CribbageAgent):
         explore_rate = 0.3 - variance(p) # EXPLORE_RATE
         PD('explore_rate=%f' % explore_rate, _METHOD)
         explore = explore_rand < explore_rate
-        action = None
+        #action = None
         if explore:
             PD("explore_rand < explore_rate, exploring",_METHOD)
             # explore step, choose randomly according to weights
             # numpy.random.choice(stuff, p=probabilities)
             p_choice = choice(len(p), p=normalize(p)) # fix params
             index = p_choice
-            action = index
+            #action = index
             PD("exploring to use index=%d" % index, _METHOD)
         else:
             PD('exploration not in the cards this time, using largest possible probability', _METHOD)
@@ -272,10 +274,12 @@ class SmartCribbageAgent(CribbageAgent):
             # numpy choice also allows uniform choice
             indices = _get_all_indices(p, max(p))
             index = choice(indices)
-            action = index
+            #action = index
             PD('Using %d of available %s' % (index, str(indices)), _METHOD)
 
         # path is (state, action), where state is (MyScore,OppScore,Dealer?)
+        # action will actually be a set of top recommenders for this choice
+        action = action_indices(S, index)
         self.add_to_visited_path(opponent_score, action)
         keep = list(combinations(self.hand, KEEP_AMOUNT))[index]
         toss = [card for card in self.hand if card not in keep]
@@ -308,6 +312,9 @@ class SmartCribbageAgent(CribbageAgent):
         return weights
 
     def add_to_visited_path(self, opponent_score, action):
+        PD('adding (%d, %d, %s, %s) to path' %\
+                (self.score, opponent_score, self.is_dealer, action),
+                'add_to_visited_path')
         self.game_weights_path.append((self.score, opponent_score, self.is_dealer, action))
         pass
 
@@ -347,10 +354,12 @@ class SmartCribbageAgent(CribbageAgent):
             # N.B.: topic for part of thesis background: regularization
             # (of the weights, not the decay of the modifier)
 
-            # adjust the action weight by the modifier
+            # adjust the action weights by the modifier
             # 1 + weights_mod will scale weight down if wm is negative,
             #   and up if wm is positive
-            start[a] *= (1.0 + weights_mod)
+            for _a in a:
+                PD('>> adjusting weight at action_point=%d' % _a, _METHOD)
+                start[_a] *= (1.0 + weights_mod)
 
             # normalize vector
             end = normalize(start)
@@ -397,3 +406,24 @@ class SmartCribbageAgent(CribbageAgent):
 
 def normalize(vector):
     return list(sknorm([vector], norm='l1')[0])
+
+def action_indices(S, index,
+                    lower_bound_pct=ACTION_LOWER_BOUND_PCT,
+                    max_count_pct=ACTION_MAX_COUNT_PCT):
+    _METHOD = 'action_indices'
+    PD('entering', _METHOD)
+    sj = [S[i][index] for i in range(len(S))]
+
+    mx = max(sj)
+    lower_bound = (1.0 - lower_bound_pct) * mx
+    max_count = max(1, int(len(sj) * max_count_pct))
+    PD('> max: %d, min: %d, max_count: %d' % (mx, lower_bound, max_count), _METHOD)
+
+    ind_val = sorted([(i,v) for i,v in enumerate(sj) if v >= lower_bound],
+                        key=lambda x: x[1],
+                        reverse=True)
+    PD('> candidates: ' + str(ind_val), _METHOD)
+
+
+    PD('exiting', _METHOD)
+    return [ind for ind,val in ind_val[:max_count]]
