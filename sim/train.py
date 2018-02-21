@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
+from copy           import  deepcopy
 from os             import  access, mkdir, W_OK
 from pandas         import  read_csv
 from random         import  sample
@@ -10,7 +11,7 @@ from sqlalchemy.orm import  sessionmaker
 from time           import  gmtime, strftime
 
 from agent          import  SmartCribbageAgent
-from cribbage       import  CribbageGame
+from cribbage       import  CribbageGame, ctoh_str
 from weights        import  WeightCoordinate, create_weight_tables
 from utils          import  PD
 
@@ -111,13 +112,18 @@ def train_pegging(rounds=1000):
         PD('\t\tDealing out cards', _METHOD)
         all_cards = sample(range(52), 8)
         game.pone.hand = all_cards[:4]
-        PD('\t\t\tPone hand: %s' % str(game.pone.hand))
+        game.pone._peg_cards_left = deepcopy(game.pone.hand)
+        PD('\t\t\tPone hand: %s' % ctoh_str(game.pone.hand))
         game.dealer.hand = all_cards[4:]
-        PD('\t\t\tDealer hand: %s' % str(game.dealer.hand))
+        game.dealer._peg_cards_left = deepcopy(game.dealer.hand)
+        PD('\t\t\tDealer hand: %s' % ctoh_str(game.dealer.hand))
 
         # play the pegging round
         PD('\t\tPlaying the actual pegging round', _METHOD)
         game.peg()
+
+        PD('\t\tScores after: Dealer(%d) - Pone(%d)' % (game.dealer.score, game.pone.score),
+                _METHOD)
 
         # randomly assign agents as pone or dealer;
         # really just cycle to keep even distribution
