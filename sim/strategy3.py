@@ -79,10 +79,11 @@ def possible_AggregatePlayedHandRecords(ktts):
     for k,t in ktts:
         #k,t = ktt
         retrieved = records_session.query(AggregatePlayedHandRecord).filter_by(\
-                        card0=k[0],
-                        card1=k[1],
-                        card2=k[2],
-                        card3=k[3]).first()
+                        id=AggregatePlayedHandRecord.generate_id(k)).first()
+                        #card0=k[0],
+                        #card1=k[1],
+                        #card2=k[2],
+                        #card3=k[3]).first()
         ret.append(retrieved)
 
     return ret
@@ -93,12 +94,13 @@ def possible_KeepThrowStatistics(ktts):
 
     for k,t in ktts:
         retrieved = records_session.query(KeepThrowStatistics).filter_by(\
-                        kcard0=k[0],
-                        kcard1=k[1],
-                        kcard2=k[2],
-                        kcard3=k[3],
-                        tcard0=t[0],
-                        tcard1=t[1]).first()
+                        id=KeepThrowStatistics.generate_id(k,t)).first()
+                        #kcard0=k[0],
+                        #kcard1=k[1],
+                        #kcard2=k[2],
+                        #kcard3=k[3],
+                        #tcard0=t[0],
+                        #tcard1=t[1]).first()
         ret.append(retrieved)
 
     return ret
