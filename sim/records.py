@@ -22,7 +22,8 @@ from config                     import  DEBUG,\
                                         DB_UPDATE_SAVE_INTERVAL_AGGPLAYEDHAND,\
                                         DB_UPDATE_SAVE_INTERVAL_PLAYED_HAND,\
                                         DB_POPULATE_SAVE_INTERVAL,\
-                                        DB_AGG_REC_REFRESH_MODULO
+                                        DB_AGG_REC_REFRESH_MODULO,\
+                                        DB_AGGREGATE_REFRESH_MAX
 from strategy                   import  _enumerate_possible_hand_values,\
                                         _enumerate_possible_toss_values
 from utils                      import  PD
@@ -116,7 +117,13 @@ class AggregatePlayedHandRecord(Base):
 
     def hand(self):
         return [self.card0, self.card1, self.card2, self.card3]
-    pass
+
+    def generate_id(cards):
+        scards = sorted(cards) # double check that things are sorted
+        return  scards[0] * 1000000 +\
+                scards[1] * 10000 +\
+                scards[2] * 100 +\
+                scards[3] * 1;
 
 # N.B.:
 #   Unfortunately only thought of this well after writing all this,
@@ -141,11 +148,12 @@ def input_PlayedHandRecord(cards, gained, given):
     PD('entering', 'input_PlayedHandRecord')
     global input_PlayedHandRecord_counter
     global session
+    scards = sorted(cards)
     record = PlayedHandRecord(
-                card0=cards[0],
-                card1=cards[1],
-                card2=cards[2],
-                card3=cards[3],
+                card0=scards[0],
+                card1=scards[1],
+                card2=scards[2],
+                card3=scards[3],
                 score_gained=gained,
                 score_given=given)
     session.add(record)
@@ -155,10 +163,11 @@ def input_PlayedHandRecord(cards, gained, given):
     try:
         PD('> querying for aggregate record', 'input_PlayedHandRecord')
         agg_rec = session.query(AggregatePlayedHandRecord).filter_by(
-                    card0=cards[0],
-                    card1=cards[1],
-                    card2=cards[2],
-                    card3=cards[3]).first() #one_or_none()
+                    id=AggregatePlayedHandRecord.generate_id(scards)).first()
+                    #card0=cards[0],
+                    #card1=cards[1],
+                    #card2=cards[2],
+                    #card3=cards[3]).first() #one_or_none()
     except:
         PD('> Aggregate Record not found, need to create', 'input_PlayedHandRecord')
         need_to_add = True
@@ -167,24 +176,27 @@ def input_PlayedHandRecord(cards, gained, given):
     if agg_rec is not None:
         PD('>> agg_rec has been found', 'input_PlayedHandRecord')
         # add to counter, potentially refresh
-        agg_rec.records_refresh_counter = ((agg_rec.records_refresh_counter + 1)\
-                                                % DB_AGG_REC_REFRESH_MODULO)
+        #agg_rec.records_refresh_counter = ((agg_rec.records_refresh_counter + 1)\
+        #                                        % DB_AGG_REC_REFRESH_MODULO)
+        agg_rec.records_refresh_counter += 1 # ignore
         # ensure log(refresh_counter) and log(refresh_counter-1) exist
         agg_rec.records_refresh_counter = max(agg_rec.records_refresh_counter, 2)
         # refresh if the lower bound power of 2 has changed to refresh 
         #   less as time passes more and more
         PD('agg_rec.records_refresh_counter=%d' % agg_rec.records_refresh_counter,
                 'input_PlayedHandRecord')
-        if int(log2(agg_rec.records_refresh_counter)) != \
-                int(log2(agg_rec.records_refresh_counter - 1)):
+        if (int(log2(agg_rec.records_refresh_counter)) != \
+                int(log2(agg_rec.records_refresh_counter - 1))) or\
+                (agg_rec.records_refresh_counter % DB_AGGREGATE_REFRESH_MAX == 0):
+                    # include soft limit at (e.g. 100) to override log2 when things are big
             records = session.query(PlayedHandRecord).filter_by(\
-                        card0=cards[0],
-                        card1=cards[1],
-                        card2=cards[2],
-                        card3=cards[3])
+                        card0=scards[0],
+                        card1=scards[1],
+                        card2=scards[2],
+                        card3=scards[3])
             given_ = [r.score_given for r in records]
             PD('Updating given stats for hand=%s with given=%s'\
-                    % (cards, given_), 'input_PlayedHandRecord')
+                    % (scards, given_), 'input_PlayedHandRecord')
             agg_rec.given_min = min(given_)
             agg_rec.given_max = max(given_)
             agg_rec.given_avg = mean(given_)
@@ -196,7 +208,7 @@ def input_PlayedHandRecord(cards, gained, given):
 
             gained_ = [r.score_gained for r in records]
             PD('Updating given stats for hand=%s with gained=%s'\
-                    % (cards, gained_), 'input_PlayedHandRecord')
+                    % (scards, gained_), 'input_PlayedHandRecord')
             agg_rec.gained_min = min(gained_)
             agg_rec.gained_max = max(gained_)
             agg_rec.gained_avg = mean(gained_)
@@ -212,10 +224,11 @@ def input_PlayedHandRecord(cards, gained, given):
     if need_to_add:
         PD('>> need_to_add, creating AggregatePlayedHandRecord object', 'input_PlayedHandRecord')
         agg_rec = AggregatePlayedHandRecord(
-                    card0=cards[0],
-                    card1=cards[1],
-                    card2=cards[2],
-                    card3=cards[3],
+                    id=AggregatePlayedHandRecord.generate_id(scards),
+                    card0=scards[0],
+                    card1=scards[1],
+                    card2=scards[2],
+                    card3=scards[3],
                     given_min=given,
                     given_max=given,
                     given_avg=given,
@@ -302,12 +315,14 @@ class KeepThrowStatistics(Base):
 
     #@static_method
     def generate_id(keep, toss):
-        return  keep[0] * 10000000000 +\
-                keep[1] * 100000000 +\
-                keep[2] * 1000000 +\
-                keep[3] * 10000 +\
-                toss[0] * 100 +\
-                toss[1] * 1;
+        skeep = sorted(keep)
+        stoss = sorted(toss)
+        return  skeep[0] * 10000000000 +\
+                skeep[1] * 100000000 +\
+                skeep[2] * 1000000 +\
+                skeep[3] * 10000 +\
+                stoss[0] * 100 +\
+                stoss[1] * 1;
 
 def populator_process_method(dealt_hand):
     # Times:
@@ -535,12 +550,13 @@ def _populate_keep_throw_statistics(keep, throw, sess):
     #database_interaction_lock.acquire()
     with sess.no_autoflush:
         found_data = sess.query(KeepThrowStatistics).filter_by(\
-                        kcard0=keep[0],
-                        kcard1=keep[1],
-                        kcard2=keep[2],
-                        kcard3=keep[3],
-                        tcard0=throw[0],
-                        tcard1=throw[1]).first() #one_or_none()
+                        id=KeepThrowStatistics.generate_id(keep,throw)).first()
+                        #kcard0=keep[0],
+                        #kcard1=keep[1],
+                        #kcard2=keep[2],
+                        #kcard3=keep[3],
+                        #tcard0=throw[0],
+                        #tcard1=throw[1]).first() #one_or_none()
     #database_interaction_lock.release()
     if found_data is None:
         # Calculate statistics and add to database
