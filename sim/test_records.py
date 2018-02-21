@@ -112,6 +112,12 @@ def test_KeepThrowStatistics_generate_id():
     assert id_([10,2,3,4], [11,22]) == 100203041122
     assert id_([10,12,14,15],[0, 2]) == 101214150002
 
+def test_AggregatePlayedHandRecord_generate_id():
+    id_ = AggregatePlayedHandRecord.generate_id
+    assert id_([1,2,3,4]) == 1020304
+    assert id_([10,2,3,4]) == 10020304
+    assert id_([10,11,12,13]) == 10111213
+
 
 if __name__ == '__main__':
     #test_input_PlayedHandRecord()
