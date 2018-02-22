@@ -363,6 +363,7 @@ class SmartCribbageAgent(CribbageAgent):
             for _a in a:
                 PD('>> adjusting weight at action_point=%d' % _a, _METHOD)
                 start[_a] *= (1.0 + weights_mod)
+                start[_a] = max(start[_a], 0.001) # ensure non-negative and non-zero
 
             # normalize vector
             end = normalize(start)
@@ -381,7 +382,7 @@ class SmartCribbageAgent(CribbageAgent):
         wm_scaling_factor = WEIGHTS_MODIFIER_SCALING_FACTOR
         diff = min(self.score, MAX_SCORE) - min(other_agent_score, MAX_SCORE)
         PD('exiting with ret=%f' % (float(diff) / MAX_SCORE), _METHOD)
-        return float(diff) / MAX_SCORE # scale to percentage of points in a game
+        return wm_scaling_factor * float(diff) / MAX_SCORE # scale to percentage of points in a game
         #question for later: 120 or 121?
 
     def save_weights_str(self):
