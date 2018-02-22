@@ -4,7 +4,7 @@
 from copy           import  deepcopy
 from os             import  access, mkdir, W_OK
 from pandas         import  read_csv
-from random         import  sample
+from random         import  sample, randint
 from sqlalchemy     import  create_engine
 from sqlalchemy.exc import  SQLAlchemyError
 from sqlalchemy.orm import  sessionmaker
@@ -22,7 +22,25 @@ def play_training_game(agent1, agent2):
     Create and play a single game for training purposes.
     Reward and punish the correct 
     '''
+    # create the game
     game = CribbageGame(agent1, agent2)
+
+    # randomize the starting position
+    # keep the scores within 60 points:
+    #   1. unlikely to go beyond that difference
+    #   2. philosophically, if losing by that much, maybe not really your fault
+    pt_spread = 60
+    score1 = randint(0, 120)
+    score2 = randint(max(0, score1-pt_spread), min(120, score1+pt_spread))
+    if score1 % 2 == 0:
+        agent1.score = score1
+        agent2.score = score2
+    else:
+        agent1.score = score2
+        agent2.score = score1
+
+
+    # play the actual game
     game.play_full_game()
 
     # modify weights
