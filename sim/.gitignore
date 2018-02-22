@@ -4,6 +4,7 @@ __pycache__/
 checkpoints/
 checkpoints_dne/
 images/
+logs/
 
 db_*
 *.db*
