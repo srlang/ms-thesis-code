@@ -339,6 +339,9 @@ class SmartCribbageAgent(CribbageAgent):
     def punish(self, other_agent_score):
         self.modify_weights(self._weights_modifier(other_agent_score))
 
+    def reward_punish(self, other_agent_score):
+        self.modify_weights(self._weights_modifier(other_agent_score))
+
     def modify_weights(self, weights_mod):
         _METHOD = 'SmartCribbageAgent._modify_weights'
         PD('entering with weights_mod=%f, path=%s'\
@@ -372,10 +375,13 @@ class SmartCribbageAgent(CribbageAgent):
         pass
 
     def _weights_modifier(self, other_agent_score):
-        MAX_SCORE = 121
+        _METHOD = 'SmartCribbageAgent._weights_modifier'
+        PD('entering with score=%d, other_score=%d' % (self.score, other_agent_score), _METHOD)
+        MAX_SCORE = 121.0
         wm_scaling_factor = WEIGHTS_MODIFIER_SCALING_FACTOR
         diff = min(self.score, MAX_SCORE) - min(other_agent_score, MAX_SCORE)
-        return diff / MAX_SCORE # scale to percentage of points in a game
+        PD('exiting with ret=%f' % (float(diff) / MAX_SCORE), _METHOD)
+        return float(diff) / MAX_SCORE # scale to percentage of points in a game
         #question for later: 120 or 121?
 
     def save_weights_str(self):

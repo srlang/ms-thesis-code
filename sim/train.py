@@ -27,8 +27,8 @@ def play_training_game(agent1, agent2):
 
     # modify weights
     #   (no need for punish/reward specifically because generic modify_weights)
-    agent1.modify_weights(agent2.score)
-    agent2.modify_weights(agent1.score)
+    agent1.reward_punish(agent2.score)
+    agent2.reward_punish(agent1.score)
 
     return game
 
@@ -71,11 +71,36 @@ def save_checkpoint(agent, epoch, start_time_str, checkpoints_dir='./checkpoints
     output = agent.save_weights_str()
     _write_checkpoint(output, filename, checkpoints_dir)
 
-def train(agent1stratfile, agent2stratfile, epochs=1000, epoch_checkpoint=None):
+def train_multi(agent1stratfile, agent2stratfile,
+        epochs=1000, epoch_checkpoint=None,
+        procs=8):
+    _METHOD = 'train_multi'
+    from multiprocessing import Pool
+    args = []
+    for i in range(procs):
+        args.append(\
+                        (agent1stratfile, agent2stratfile,
+                            epochs, epoch_checkpoint,
+                            ('agent%03d'%(2*i), 'agent%03d'%((2*i)+1)))
+                    )
+
+    PD('calling starmap on args=%s' % str(args), _METHOD)
+    with Pool(processes=procs) as pool:
+        pool.starmap(train, args)
+        pass
+
+def train(agent1stratfile, agent2stratfile,
+            epochs=1000,  epoch_checkpoint=None,
+            agent_names=('agent1', 'agent2')):
+    PD('entering with(a1sf=%s, a2sf=%s, ep=%d, chkpt=%s, anames=%s' %\
+                        (agent1stratfile, agent2stratfile, epochs, epoch_checkpoint, agent_names),
+                        'train')
     if epoch_checkpoint is None:
         epoch_checkpoint = max(int(epochs / 100), 1)
     start_time = strftime('%Y%m%d-%H%M%S', gmtime())
     agent1, agent2 = create_agents(agent1stratfile, agent2stratfile)
+    agent1.name = agent_names[0]
+    agent2.name = agent_names[1]
 
     for epoch in range(epochs):
         PD('Epoch %d' % epoch)
@@ -93,11 +118,13 @@ def train(agent1stratfile, agent2stratfile, epochs=1000, epoch_checkpoint=None):
     save_checkpoint(agent1, epoch, start_time)
     save_checkpoint(agent2, epoch, start_time)
 
-def train_pegging(rounds=1000):
+def train_pegging(rounds=1000, agent_names=('agent1', 'agent2')):
     _METHOD = 'train_pegging'
     PD('entering', _METHOD)
     agent1 = SmartCribbageAgent()
+    agent1.name = agent_names[0]
     agent2 = SmartCribbageAgent()
+    agent2.name = agent_names[1]
     game = CribbageGame(agent1, agent2)
     game.pone, game.dealer = agent1, agent2
     # randomly assign pone and dealer
@@ -144,12 +171,23 @@ if __name__ == '__main__':
             type=int, default=1000)
     parser.add_argument('-c', '--checkpoint', help='number of epochs to checkpoint at',
             type=int, default=None)
+    parser.add_argument('-p', '--processes', help='number of processes to use',
+            type=int, default=None)
     # ...
     args = parser.parse_args()
 
-    if args.operation == 'game':
-        PD('training (%s) against (%s) for (%d) epochs and checkpointint after every (%s)' %\
-                (args.agent1file, args.agent2file, args.epochs, str(args.checkpoint)))
-        train(args.agent1file, args.agent2file, args.epochs, args.checkpoint)
-    elif args.operation == 'peg':
-        train_pegging(args.epochs)
+    if args.processes is not None:
+        PD('have multiple processes', '__main__')
+        if args.operation == 'game':
+            train_multi(args.agent1file, args.agent2file,
+                        args.epochs, args.checkpoint,
+                        args.processes)
+        elif args.operation == 'peg':
+            pass
+    else:
+        if args.operation == 'game':
+            PD('training (%s) against (%s) for (%d) epochs and checkpointint after every (%s)' %\
+                    (args.agent1file, args.agent2file, args.epochs, str(args.checkpoint)))
+            train(args.agent1file, args.agent2file, args.epochs, args.checkpoint)
+        elif args.operation == 'peg':
+            train_pegging(args.epochs)
