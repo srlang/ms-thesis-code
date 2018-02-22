@@ -57,7 +57,9 @@ def kts_evaluator(kts, hand_property, min_):
     max_score = max(scores_num)
     min_score = min(scores_num)
     diff = max_score - min_score
-    scores = [((score - min_score) / diff) if score is not None else 0.5\
+    scores = [
+                ((score - min_score) / diff)
+                    if ((score is not None) and (diff != 0)) else 0.5\
                 # 0.5 is necessary to basically ignore for either max or min
                 # TODO: ^^^better this
                 for score in scores]
