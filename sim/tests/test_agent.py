@@ -1,6 +1,6 @@
 # Sean R. Lang <sean.lang@cs.helsinki.fi>
 
-from agent import CribbageAgent, GoException
+from code.sim.agent import CribbageAgent, GoException
 
 def test_initialization():
     agent = CribbageAgent()
