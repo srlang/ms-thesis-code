@@ -5,9 +5,9 @@ test_files = test_agent.py test_analyze.py test_cribbage__game.py test_cribbage_
 test_all: test_smart test_train test_rest
 
 test_train:
-	test -f checkpoints/checkpoint_TestAgent_TestStartTime_100.txt && \
+	touch  checkpoints/checkpoint_TestAgent_TestStartTime_100.txt && \
 		rm -v checkpoints/checkpoint_TestAgent_TestStartTime_100.txt
-	test -d checkpoints_dne && rm -rv checkpoints_dne
+	touch  checkpoints_dne && rm -rv checkpoints_dne
 	py.test -v test_train.py
 
 test_smart:
@@ -18,3 +18,6 @@ test_rest:
 
 push:
 	git push hy master && git push gh master
+
+tar: *.py
+	tar cvJf py.tar.bz2 *.py
