@@ -55,7 +55,7 @@ cd $working_dir
 
 # extract source code
 echo "Extracting source code tarball..."
-tar -xvJf $source_tar
+tar -xvjf $source_tar
 echo "done."
 
 # make the extra directories

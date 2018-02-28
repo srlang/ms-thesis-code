@@ -19,5 +19,5 @@ test_rest:
 push:
 	git push hy master && git push gh master
 
-tar: *.py
-	tar cvJf py.tar.bz2 *.py
+tar: *.py requirements.txt
+	tar cvjf py.tar.bz2 *.py requirements.txt
