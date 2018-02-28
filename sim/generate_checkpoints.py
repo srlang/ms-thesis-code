@@ -3,7 +3,7 @@
 from random import random as rand
 from sklearn.preprocessing  import normalize as sknorm
 
-from agent import blank_weights, normalize, SmartCribbageAgent
+#from agent import blank_weights, normalize, SmartCribbageAgent
 from train import _write_checkpoint
 
 #def blank_weights():
@@ -13,11 +13,33 @@ def normalize(vector):
     return list(sknorm([vector], norm='l1')[0])
 
 def write_checkpoint(filename, weights, strats):
-    agent = SmartCribbageAgent()
-    agent.weights = weights
-    agent._strat_names = strats
-    output = agent.save_weights_str()
+    #agent = SmartCribbageAgent()
+    #agent.weights = weights
+    #agent._strat_names = strats
+    #output = agent.save_weights_str()
+    output = save_weights_str_static(weights, strats)
     _write_checkpoint(output, filename, './checkpoints')
+
+def save_weights_str_static(weights, strat_names):
+    header_ln = 'my_score opp_score dealer ' + ' '.join(strat_names) + '\n'
+    ret = '\n'.join(
+            [
+                    (
+                        (('%d %d %d ' % (m,o,d)) + \
+                             ' '.join(
+                                    [str(w) for w in weights[m][o][d]]
+                                    )
+                             ) if weights[m][o][d] is not None
+                                    else ''
+                    )
+                    for m in range(len(weights))
+                for o in range(len(weights[m]))
+            for d in [0,1]
+            ]
+        ).strip()
+    #ret = filter(lambda line: not re.match(r'^\s*$', line), ret)
+    ret = sub(r'(\n){2,}', '\n', ret)
+    return header_ln + ret
 
 def random_weights(strats):
     nstrats = len(strats)
