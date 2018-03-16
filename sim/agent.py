@@ -4,7 +4,7 @@
 
 from copy                   import deepcopy
 from itertools              import combinations
-from numpy                  import matmul
+from numpy                  import matmul, array, zeros
 from numpy.random           import choice
 from pandas                 import read_csv
 from random                 import random
@@ -252,7 +252,8 @@ class SmartCribbageAgent(CribbageAgent):
         #   already are (more accurately inversely correlated)
         #   variance is the word you're looking for
         PD('variance=%f' % variance(p), _METHOD)
-        explore_rate = 0.3 - variance(p) # EXPLORE_RATE
+        #explore_rate = 0.3 - variance(p) # EXPLORE_RATE
+        explore_rate=0 # tournament play: just follow the rules, eh?
         PD('explore_rate=%f' % explore_rate, _METHOD)
         explore = explore_rand < explore_rate
         #action = None
@@ -304,12 +305,27 @@ class SmartCribbageAgent(CribbageAgent):
         m = self.score
         o = opponent_score
         d = int(self.is_dealer)
+        weights = self._retrieve_local_weights(m, o, d)
+        return weights
+
+    def _retrieve_local_weights(self, my_score, opp_score, dealer):
         num_strats = max(len(self._strat_names),1)
-        weights = self.weights[m][o][d]
+        weights = self.weights[my_score][opp_score][dealer]
         if weights is None or weights == []:
             weights = [1/num_strats] * num_strats
-            self.weights[m][o][d] = weights
-        return weights
+            self.weights[my_score][opp_score][dealer] = weights
+        neighbors = zeros(num_strats, dtype='float64')
+        for m in [-1,0,1]:
+            newm = my_score + m
+            if (newm < 0) or (newm > 120):
+                continue
+            for o in [-1,0,1]:
+                newo = opp_score + o
+                if (newo < 0) or (newo > 120):
+                    continue
+                if (not m == o == 0):
+                    neighbors += array(self.weights[my_score+m][opp_score+o][dealer])
+        return normalize((0.60 * weights) + (0.40 * neighbors))
 
     def add_to_visited_path(self, opponent_score, action):
         PD('adding (%d, %d, %s, %s) to path' %\
