@@ -61,9 +61,9 @@ def all_files(file_format, agent_name, date_str, directory='./checkpoints'):
     return ret
 
 def plot_single_strategy(file_names, strat_name,
-                            pone=False, color_map='Greys', out_dir='./images/'):
+                            pone=False, color_map='Greys', out_dir='./images/', in_dir='./checkpoints'):
     for fn in file_names:
-        d,p = read_weights_file(fn)
+        d,p = read_weights_file(fn, directory=in_dir)
         w = p if pone else d
         strat = w[['my_score', 'opp_score', 'dealer'] + [strat_name]]
         t = weights_tabled(strat, 1)[0] # grab first index (of 1)
@@ -77,6 +77,7 @@ def plot_single_strategy(file_names, strat_name,
                 ('_%s_' % ('pone' if pone else 'dealer')) +\
                 strat_name + '.png'
 
+        print(strat_name + ': weights[0:3,0:3]: ' + str(t[0:3,0:3]))
         # set vmin/vmax to ensure that colors stay consistent across multiple
         # runs. we know that this can only be 0-1 because of normalization
         plt.imsave(out_file, t, cmap=color_map, vmin=0.0, vmax=1.0)
@@ -108,15 +109,23 @@ if __name__ == '__main__':
     # [[None]*121]*121 --> does not work: all rows same pointer
     args = parser.parse_args()
     if args.operation == 'single':
-        files = all_files(CHECKPOINT_FILENAME_FORMAT, args.agent, args.date_str)
+        files = all_files(CHECKPOINT_FILENAME_FORMAT, args.agent, args.date_str, directory=args.directory)
         #print('files:')
         #print(files)
+        print('Running with parameters:')
+        #print('\tfiles=%s' % files)
+        print('\tstrategy=%s' % args.strategy)
+        print('\tpone?=%s' % str(args.pone))
+        print('\tcolor_map=%s' % args.color)
+        print('\tout_dir=%s' % args.output_dir)
+
         plot_single_strategy(\
                 files,\
                 args.strategy,
                 pone=args.pone,
                 color_map=args.color,
-                out_dir=args.output_dir)
+                out_dir=args.output_dir,
+                in_dir=args.directory)
 
     else:
         print('other operation gotten')
