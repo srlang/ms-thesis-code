@@ -50,7 +50,7 @@ if __name__ == '__main__':
         for p in args.previous_agents.split(','):
             print('playing game between %s and %s' % (args.master_agent, p))
             results.append(play_tournament(args.master_agent, p, num_games=args.games))
-        
+
 
         if args.metric == 'spread':
             ys = spreads = [s for a,b,s,(w,l) in results]

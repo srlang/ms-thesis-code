@@ -84,6 +84,95 @@ def plot_single_strategy(file_names, strat_name,
 
     pass
 
+def dealer_pone_difference(file_name, out_dir='./hot', color_map='Greys'):
+    from train import _write_checkpoint
+    from generate_checkpoints import blank_weights
+    STRATEGIES = ['hand_max_min', 'hand_max_avg', 'hand_max_med', 'hand_max_poss', 'crib_min_avg', 'pegging_max_avg_gained', 'pegging_max_med_gained', 'pegging_min_avg_given']
+
+    # bug in code (which I'm keeping for nostalgia/to point out later)
+    # means that these are switched.
+    # "fixing" here by reversing to keep things straight
+    #p,d = read_weights_file(file_name, directory='.') #, directory=in_dir)
+    #print(d)
+
+    table = read_csv(file_name, sep=' ') #, directory=in_dir)
+    dealer = np.zeros((121,121,len(STRATEGIES)))
+    pone = np.zeros((121,121,len(STRATEGIES)))
+    #print(pone)
+    #print(pone.shape)
+    for _,row in table.iterrows():
+        m = int(row.iloc[0])
+        o = int(row.iloc[1])
+        d = int(row.iloc[2])
+        weights = [row.iloc[i+3] for i in range(len(STRATEGIES))]
+        if d:
+            dealer[m][o] = np.array(weights)
+            pass
+        else:
+            # pone
+            pone[m][o] = np.array(weights)
+            pass
+#        for i in range(len(STRATEGIES)):
+#            diff[i,m,o] = table[(table['my_score'] == m) & (table['opp_score'] == o) & (table['dealer'] == 1)] - table[(table['my_score'] == m) & (table['opp_score'] == o) & (table['dealer'] == 0)]
+
+    diff = np.transpose(np.subtract(dealer, pone))
+    print(diff.shape)
+
+    for i in range(len(STRATEGIES)):
+        strat = STRATEGIES[i]
+        out_file = out_dir + '/' + strat + '.png'
+        plt.imsave(out_file, np.transpose(diff[i]), cmap=color_map, vmin=-1.0, vmax=1.0)
+    #print(diff)
+    #print(diff.shape)
+    #diff = blank_weights()
+    #dealer_tabled = weights_tabled(d, len(STRATEGIES))
+    #pone_tabled = weights_tabled(p, len(STRATEGIES))
+    #print(dealer_tabled)
+
+    #for _,row in d.iterrows():
+
+#    for i in range(121):
+#        for j in range(121):
+#            # make pone and dealer the same, who cares?
+#            # we're just hacking together a difference for a single image
+#            _diff = d[i][j] - p[i][j]
+#            print(_diff)
+#            #diff[i][j][0] = d[i][j] - p[i][j]
+#            #diff[i][j][1] = d[i][j] - p[i][j]
+
+#    all_strats = weights_tabled(diff, len(STRATEGIES))
+#    for i in range(len(all_strats)):
+#        #strat = STRATEGIES[i]
+#        strategy = STRATEGIES[i]
+#        out_file = out_dir + '/' + strategy + '.png'
+#        plt.imsave(out_file, all_strats[i], cmap=color_map) # allow self-scaling
+#    #wstr = weights_string(diff, strat_names)
+
+    #_write_checkpoint(wstr, file_name+'.diff', directory=out_dir)
+
+
+def weights_string(weights, strat_names):
+    from re import sub # overall, wrong way to do this, but whatever
+    header_ln = 'my_score opp_score dealer ' + ' '.join(strat_names) + '\n'
+    ret = '\n'.join(
+            [
+                    (
+                        (('%d %d %d ' % (m,o,d)) + \
+                             ' '.join(
+                                    [str(w) for w in weights[m][o][d]]
+                                    )
+                             ) if weights[m][o][d] is not None
+                                    else ''
+                    )
+                    for m in range(len(weights))
+                for o in range(len(weights[m]))
+            for d in [0,1]
+            ]
+        ).strip()
+    #ret = filter(lambda line: not re.match(r'^\s*$', line), ret)
+    ret = sub(r'(\n){2,}', '\n', ret)
+    return header_ln + ret
+
 def plot_all_strategies(file_name):
     # TODO
     pass
@@ -92,7 +181,7 @@ def plot_strategy_over_time(file_format, strat_name):
     # TODO
     pass
 
-OPERATIONS = ['single']
+OPERATIONS = ['single', 'diff']
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
@@ -105,6 +194,8 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--color', help='color map to use', default='Greys')
     parser.add_argument('-o', '--output-dir', help='directory to plot images to', default='./images')
     parser.add_argument('-s', '--strategy', help='strategy name(s(?)) to use')
+    parser.add_argument('-i', '--input', help='idk')
+    #parser.add_argument('-p', '--png', help='idk')
     # do stuff
     # [[None]*121]*121 --> does not work: all rows same pointer
     args = parser.parse_args()
@@ -126,6 +217,9 @@ if __name__ == '__main__':
                 color_map=args.color,
                 out_dir=args.output_dir,
                 in_dir=args.directory)
+
+    elif args.operation == 'diff':
+        dealer_pone_difference(args.input, args.output_dir, color_map=args.color)
 
     else:
         print('other operation gotten')

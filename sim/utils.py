@@ -11,7 +11,7 @@ from config import DEBUG
 
 def PD(msg, method=None):
     return
-###    if DEBUG:
+###    #if DEBUG:
 ###        if method:
 ###            print("%s: %s" % (method, msg))
 ###        else:

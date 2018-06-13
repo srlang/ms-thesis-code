@@ -198,6 +198,28 @@ def test__weights_modifier():
     exp_out = -23.0 / 121.0
     assert exp_out == agent._weights_modifier(opponent_score)
 
+def test__weights_mod_decay():
+    input_file = './checkpoints/random_start.txt'
+    agent = create_agent(input_file, 'NimiTällä')
+    path = [
+                    (0,0,0, [0, 7]),
+                    (10, 14, 1, [1, 2]),
+                    (20, 19, 0, [2,5,3]),
+                    (55, 40, 1, [1,2,3]),
+                    (70, 66, 0, [1]),
+                    (90, 77, 1, [4,3]),
+                    (110, 108, 0, [6])
+                    ]
+    original_weights_ref = [agent.weights[m][o][d] for m,o,d,a in path]
+    original_weights = deepcopy(original_weights_ref)
+    agent.game_weights_path = path
+    agent.modify_weights(0.175)
+
+    weights_mods = agent._tmp_weights_mods
+    for i in range(len(weights_mods)-1):
+        assert weights_mods[i] > max(weights_mods[i+1])
+
+
 def test_save_weights_str():
     #db_setup()
     input_file = './checkpoints/test_input.csv'

@@ -252,7 +252,7 @@ class SmartCribbageAgent(CribbageAgent):
         #   already are (more accurately inversely correlated)
         #   variance is the word you're looking for
         PD('variance=%f' % variance(p), _METHOD)
-        #explore_rate = 0.3 - variance(p) # EXPLORE_RATE
+        #explore_rate = 0.3 # - variance(p) # EXPLORE_RATE
         explore_rate=0 # tournament play: just follow the rules, eh?
         PD('explore_rate=%f' % explore_rate, _METHOD)
         explore = explore_rand < explore_rate
@@ -261,8 +261,11 @@ class SmartCribbageAgent(CribbageAgent):
             PD("explore_rand < explore_rate, exploring",_METHOD)
             # explore step, choose randomly according to weights
             # numpy.random.choice(stuff, p=probabilities)
-            p_choice = choice(len(p), p=normalize(p)) # fix params
-            index = p_choice
+###            p_choice = choice(len(p), p=normalize(p)) # fix params
+###            index = p_choice
+            index = choice(_get_all_indices(p, max(p)))
+            # to choose uniformly random (as it should have been):
+            # index = choice(len(p))
             #action = index
             PD("exploring to use index=%d" % index, _METHOD)
         else:
@@ -314,18 +317,19 @@ class SmartCribbageAgent(CribbageAgent):
         if weights is None or weights == []:
             weights = [1/num_strats] * num_strats
             self.weights[my_score][opp_score][dealer] = weights
-        neighbors = zeros(num_strats, dtype='float64')
-        for m in [-1,0,1]:
-            newm = my_score + m
-            if (newm < 0) or (newm > 120):
-                continue
-            for o in [-1,0,1]:
-                newo = opp_score + o
-                if (newo < 0) or (newo > 120):
-                    continue
-                if (not m == o == 0):
-                    neighbors += array(self.weights[my_score+m][opp_score+o][dealer])
-        return normalize((0.60 * weights) + (0.40 * neighbors))
+        return weights
+###        neighbors = zeros(num_strats, dtype='float64')
+###        for m in [-1,0,1]:
+###            newm = my_score + m
+###            if (newm < 0) or (newm > 120):
+###                continue
+###            for o in [-1,0,1]:
+###                newo = opp_score + o
+###                if (newo < 0) or (newo > 120):
+###                    continue
+###                if (not m == o == 0):
+###                    neighbors += array(self.weights[my_score+m][opp_score+o][dealer])
+###        return normalize((0.60 * array(weights)) + (0.40 * neighbors))
 
     def add_to_visited_path(self, opponent_score, action):
         PD('adding (%d, %d, %s, %s) to path' %\
@@ -365,6 +369,7 @@ class SmartCribbageAgent(CribbageAgent):
                 _METHOD)
         #decay = 0.10 # "percent" to decay adjustments at each step back
         decay = WEIGHTS_MODIFIER_STEP_DECAY
+        self._tmp_weights_mods = []
         # my_score, opp_score, dealer, explore
         for m,o,d,a in reversed(self.game_weights_path):
             PD('> entering loop with weights_mod=%f' % weights_mod, _METHOD)
@@ -381,11 +386,16 @@ class SmartCribbageAgent(CribbageAgent):
                 start[_a] *= (1.0 + weights_mod)
                 start[_a] = max(start[_a], 0.001) # ensure non-negative and non-zero
 
+            # insert regularization
+            # RESUME
+            mid = start
+
             # normalize vector
-            end = normalize(start)
+            end = normalize(mid)
             self.weights[m][o][d] = end
             PD('> ending weights = %s' % end, _METHOD)
 
+            self._tmp_weights_mods.append(weights_mod)
             weights_mod *= (1.0 - decay) # allow for decaying return values
             # because early points should be punished less severely since more
             # possible outcomes from that position
